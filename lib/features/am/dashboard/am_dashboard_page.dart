@@ -13,6 +13,7 @@ import '../../../core/theme.dart';
 import '../../../core/widgets/shad_logo.dart';
 import '../../../data/client_repository.dart';
 import '../../../data/dashboard_repository.dart';
+import '../../../data/dashboard_stats_repository.dart';
 import '../../../data/manager_repository.dart';
 import '../../../data/meeting_repository.dart';
 import '../../../data/notification_repository.dart';
@@ -20,6 +21,7 @@ import '../../../data/payment_repository.dart';
 import '../../../providers/client_provider.dart';
 import '../../../providers/contract_provider.dart';
 import '../../../providers/dashboard_provider.dart';
+import '../../../providers/dashboard_stats_provider.dart';
 import '../../../providers/manager_provider.dart';
 import '../../../providers/meeting_provider.dart';
 import '../../../providers/notification_provider.dart';
@@ -50,15 +52,12 @@ class AmDashboardPage extends StatefulWidget {
   final ApiClient? api;
   final NotificationProvider? notificationProvider;
   final DashboardProvider? dashboardProvider;
+  // Testability seam for GET /dashboard/stats (server-side-stats-plan.md,
+  // Stage 3) — same reasoning as dashboardProvider above. Defaults to null,
+  // which falls back to a real DashboardStatsProvider built from `_api`.
+  final DashboardStatsProvider? dashboardStatsProvider;
   final MeetingProvider? meetingProvider;
-  const AmDashboardPage(
-      {super.key,
-      this.enablePolling = true,
-      this.reverb,
-      this.api,
-      this.notificationProvider,
-      this.dashboardProvider,
-      this.meetingProvider});
+  const AmDashboardPage({super.key, this.enablePolling = true, this.reverb, this.api, this.notificationProvider, this.dashboardProvider, this.dashboardStatsProvider, this.meetingProvider});
 
   @override
   State<AmDashboardPage> createState() => _AmDashboardPageState();
@@ -83,19 +82,23 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   late final ManagerProvider _childManagerProvider =
       ManagerProvider(repository: ManagerRepository(api: _api));
   late final ContractProvider _childContractProvider = ContractProvider(api: _api);
-  late final PaymentProvider _childPaymentProvider =
-      PaymentProvider(repository: PaymentRepository(api: _api));
-  late final NotificationProvider _notificationProvider = widget.notificationProvider ??
-      NotificationProvider(repository: NotificationRepository(api: _api));
-  late final DashboardProvider _dashboardProvider =
-      widget.dashboardProvider ?? DashboardProvider(repository: DashboardRepository(api: _api));
-  late final MeetingProvider _meetingProvider =
-      widget.meetingProvider ?? MeetingProvider(repository: MeetingRepository(api: _api));
+  late final PaymentProvider _childPaymentProvider = PaymentProvider(repository: PaymentRepository(api: _api));
+  late final NotificationProvider _notificationProvider =
+      widget.notificationProvider ?? NotificationProvider(repository: NotificationRepository(api: _api));
+  late final DashboardProvider _dashboardProvider = widget.dashboardProvider ?? DashboardProvider(repository: DashboardRepository(api: _api));
+  late final DashboardStatsProvider _dashboardStatsProvider =
+      widget.dashboardStatsProvider ?? DashboardStatsProvider(repository: DashboardStatsRepository(api: _api));
+  late final MeetingProvider _meetingProvider = widget.meetingProvider ?? MeetingProvider(repository: MeetingRepository(api: _api));
   List<dynamic> _allClients = [];
   List<dynamic> _allManagers = [];
   List<dynamic> _pendingPayments = [];
   List<Map<String, dynamic>> _pendingContracts = [];
   List<dynamic> _allContracts = [];
+  // GET /dashboard/stats' raw response (server-side-stats-plan.md, Stage 3) —
+  // clients.total/contracts.active/payments.pending/approvals.total back the
+  // four home-tab summary cards. Null until the first successful fetch;
+  // every read below defaults to 0 rather than crashing on a null map.
+  Map<String, dynamic>? _stats;
   bool _loading = true;
   int _unreadNotifs = 0;
   int _selectedIndex = 0;
@@ -121,13 +124,16 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   }
 
   late final ReverbService _reverb = widget.reverb ?? ReverbService();
+  // plans/notifications-badges-toasts-plan.md ن15 — see the identical field
+  // in client_dashboard_screen.dart for why this list exists.
+  final List<VoidCallback> _reverbUnsubscribers = [];
 
   void _setupRealtimeNotifications() {
     final uid = _api.userId;
     if (uid == null) return;
     final reverb = _reverb;
     reverb.connectForUser(uid);
-    reverb.onNotificationReceived = (payload) {
+    _reverbUnsubscribers.add(reverb.addNotificationReceivedListener((payload) {
       _loadNotifs();
       if (!mounted) return;
       final msg = (payload['data'] as Map?)?['message'] as String? ??
@@ -139,7 +145,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
       ));
-    };
+    }));
   }
 
   Future<void> _load() async {
@@ -147,13 +153,13 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     try {
       if (_isSA) {
         _allManagers = await _childManagerProvider.fetchAllManagersRaw();
-        _pendingContracts = await _fetchAllContracts(['sent', 'client_approved']);
         try {
           _allContracts = await _childContractProvider.fetchAllContractsAcrossCompanyRaw();
         } catch (e, s) {
           AppLog.error('am_dashboard._load(allContracts)', e, s);
           _allContracts = [];
         }
+        _pendingContracts = _derivePendingContracts(_allContracts);
         try {
           final pData = await _childPaymentProvider.fetchPendingRaw();
           _pendingPayments = safeList(pData['payments']);
@@ -164,7 +170,13 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
       } else {
         _allClients = await _childClientProvider.fetchClientsRaw();
         _filter();
-        _pendingContracts = await _fetchAllContracts(['sent', 'client_approved']);
+        try {
+          _allContracts = await _childContractProvider.fetchAllContractsAcrossCompanyRaw();
+        } catch (e, s) {
+          AppLog.error('am_dashboard._load(allContracts)', e, s);
+          _allContracts = [];
+        }
+        _pendingContracts = _derivePendingContracts(_allContracts);
         try {
           final pData = await _childPaymentProvider.fetchPendingRaw();
           _pendingPayments = safeList(pData['payments']);
@@ -172,17 +184,30 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
           AppLog.error('am_dashboard._load(pendingPayments)', e, s);
           _pendingPayments = [];
         }
-        try {
-          _allContracts = await _childContractProvider.fetchAllContractsAcrossCompanyRaw();
-        } catch (e, s) {
-          AppLog.error('am_dashboard._load(allContracts)', e, s);
-          _allContracts = [];
-        }
+      }
+      // 24 Sept 2026 (server-side-stats-plan.md, Stage 3) — one request for
+      // every summary-card number, scoped server-side the same way /reports
+      // already is. Replaces the old _fetchAllContracts() N+1 loop entirely
+      // (it fetched every client, then one more request per client's
+      // workspace contracts — up to 31 requests just to find pending
+      // contract approvals); see _derivePendingContracts above, which now
+      // builds that preview list from _allContracts instead, already a
+      // single request.
+      try {
+        _stats = await _dashboardStatsProvider.fetchStats();
+      } catch (e, s) {
+        AppLog.error('am_dashboard._load(stats)', e, s);
+        _stats = null;
       }
     } catch (e, s) {
       AppLog.error('am_dashboard._load', e, s);
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  int _statInt(String section, String key) {
+    final value = (_stats?[section] as Map?)?[key];
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   void _filter() {
@@ -258,38 +283,29 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     context.push('/am/workspace/${ws['id']}');
   }
 
-  Future<List<Map<String, dynamic>>> _fetchAllContracts(List<String> statuses) async {
-    final results = <Map<String, dynamic>>[];
-    try {
-      final clients = await _childClientProvider.fetchClientsRaw();
-      for (final client in clients) {
-        final ws = client['workspace'] as Map<String, dynamic>?;
-        if (ws == null) continue;
-        try {
-          final contracts =
-              await _childContractProvider.fetchWorkspaceContractsRaw(ws['id'] as int);
-          for (final c in contracts) {
-            if (statuses.contains(c['status'])) {
-              results.add({
-                'title': c['title'] ?? '',
-                'value': c['value'] ?? 0,
-                'currency': c['currency'] ?? 'SAR',
-                'company': client['company_name'] ?? '',
-                'client': client,
-                'workspace_id': ws['id'],
-              });
-            }
-          }
-        } catch (e, s) {
-          // One workspace failing shouldn't drop the whole list.
-          AppLog.error('am_dashboard._fetchAllContracts(workspace)', e, s);
-          continue;
-        }
-      }
-    } catch (e, s) {
-      AppLog.error('am_dashboard._fetchAllContracts', e, s);
-    }
-    return results;
+  /// Builds the "latest pending contract approvals" preview list straight
+  /// from [_allContracts] (already a single request — see [_load]) instead
+  /// of the old `_fetchAllContracts()`, which fetched every client (page 1
+  /// only) and then made one more request per client just to find their
+  /// pending contracts — up to 31 requests to render 2 preview rows.
+  /// server-side-stats-plan.md, Stage 3 (M4).
+  List<Map<String, dynamic>> _derivePendingContracts(List<dynamic> contracts) {
+    const pendingStatuses = {'sent', 'client_approved'};
+    return contracts
+        .where((c) => c is Map && pendingStatuses.contains(c['status']))
+        .map<Map<String, dynamic>>((c) {
+          final ws = c['workspace'] as Map<String, dynamic>?;
+          final client = ws?['client'] as Map<String, dynamic>?;
+          return {
+            'title': c['title'] ?? '',
+            'value': c['value'] ?? 0,
+            'currency': c['currency'] ?? 'SAR',
+            'company': client?['company_name'] ?? '',
+            'client': client,
+            'workspace_id': ws?['id'],
+          };
+        })
+        .toList();
   }
 
   void _createMeeting() {
@@ -325,6 +341,9 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   void dispose() {
     _pollTimer?.cancel();
     _searchController.dispose();
+    for (final unsubscribe in _reverbUnsubscribers) {
+      unsubscribe();
+    }
     super.dispose();
   }
 
@@ -377,19 +396,23 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
         actions: [
           Stack(children: [
             IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                onPressed: () => context.push('/notifications')),
+              icon: const Icon(Icons.notifications_outlined),
+              // plans/notifications-badges-toasts-plan.md ن12 — this used to
+              // leave the badge showing its stale pre-visit count until the
+              // next 60s poll tick, even though the notifications page
+              // itself just marked things read/deleted.
+              onPressed: () => context.push('/notifications').then((_) => _loadNotifs()),
+            ),
             if (_unreadNotifs > 0)
               Positioned(
                 right: 6,
                 top: 6,
                 child: Container(
                   padding: const EdgeInsets.all(4),
-                  decoration:
-                      const BoxDecoration(color: ShadColors.crimson, shape: BoxShape.circle),
-                  child: Text('$_unreadNotifs',
-                      style: const TextStyle(
-                          fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
+                  decoration: const BoxDecoration(color: ShadColors.crimson, shape: BoxShape.circle),
+                  // ن12 — capped at 99+ like every other tab badge in this
+                  // app; this one was left uncapped.
+                  child: Text(_unreadNotifs > 99 ? '99+' : '$_unreadNotifs', style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
           ]),
@@ -404,56 +427,53 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : IndexedStack(
-                index: _selectedIndex,
-                children: _isSA
-                    ? [
-                        buildHomeTab(
-                          context: context,
-                          allManagers: _allManagers,
-                          allContracts: _allContracts,
-                          pendingContracts: _pendingContracts,
-                          pendingPayments: _pendingPayments,
-                          api: _api,
-                          onSelectTab: (i) => setState(() => _selectedIndex = i),
-                          onShowAllMeetings: _showAllMeetings,
-                          onManagerTap: _showManagerClients,
-                          load: _load,
-                        ),
-                        SaApprovalsPage(
-                            clientProvider: _childClientProvider,
-                            contractProvider: _childContractProvider,
-                            paymentProvider: _childPaymentProvider),
-                        SaClientsPage(
-                            clientProvider: _childClientProvider,
-                            managerProvider: _childManagerProvider,
-                            api: _api),
-                        SaTeamPage(managerProvider: _childManagerProvider, api: _api),
-                        AdminSettingsPage(api: _api),
-                      ]
-                    : [
-                        buildAmHomeTab(
-                          context: context,
-                          allClients: _allClients,
-                          allContracts: _allContracts,
-                          pendingContracts: _pendingContracts,
-                          pendingPayments: _pendingPayments,
-                          isSA: _isSA,
-                          api: _api,
-                          onSelectTab: (i) => setState(() => _selectedIndex = i),
-                          onShowAllMeetings: _showAllMeetings,
-                          onOpenClient: _openClient,
-                          load: _load,
-                        ),
-                        SaApprovalsPage(
-                            clientProvider: _childClientProvider,
-                            contractProvider: _childContractProvider,
-                            paymentProvider: _childPaymentProvider),
-                        _buildAmClientsTab(),
-                        AdminSettingsPage(api: _api),
-                      ],
-              ),
+          ? const Center(child: CircularProgressIndicator())
+          : IndexedStack(
+              index: _selectedIndex,
+              children: _isSA
+                ? [
+                    buildHomeTab(
+                      context: context,
+                      allManagers: _allManagers,
+                      pendingContracts: _pendingContracts,
+                      pendingPayments: _pendingPayments,
+                      api: _api,
+                      onSelectTab: (i) => setState(() => _selectedIndex = i),
+                      onShowAllMeetings: _showAllMeetings,
+                      onManagerTap: _showManagerClients,
+                      load: _load,
+                      clientsTotal: _statInt('clients', 'total'),
+                      contractsActive: _statInt('contracts', 'active'),
+                      paymentsPending: _statInt('payments', 'pending'),
+                      approvalsTotal: _statInt('approvals', 'total'),
+                    ),
+                    SaApprovalsPage(dashboardStatsProvider: _dashboardStatsProvider),
+                    SaClientsPage(clientProvider: _childClientProvider, managerProvider: _childManagerProvider, api: _api),
+                    SaTeamPage(managerProvider: _childManagerProvider, api: _api),
+                    AdminSettingsPage(api: _api),
+                  ]
+                : [
+                    buildAmHomeTab(
+                      context: context,
+                      allClients: _allClients,
+                      pendingContracts: _pendingContracts,
+                      pendingPayments: _pendingPayments,
+                      isSA: _isSA,
+                      api: _api,
+                      onSelectTab: (i) => setState(() => _selectedIndex = i),
+                      onShowAllMeetings: _showAllMeetings,
+                      onOpenClient: _openClient,
+                      load: _load,
+                      clientsTotal: _statInt('clients', 'total'),
+                      contractsActive: _statInt('contracts', 'active'),
+                      paymentsPending: _statInt('payments', 'pending'),
+                      approvalsTotal: _statInt('approvals', 'total'),
+                    ),
+                    SaApprovalsPage(dashboardStatsProvider: _dashboardStatsProvider),
+                    _buildAmClientsTab(),
+                    AdminSettingsPage(api: _api),
+                  ],
+            ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,

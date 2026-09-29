@@ -44,6 +44,29 @@ void main() {
     expect(find.text('Past Sync'), findsOneWidget);
   });
 
+  // 23 Sept 2026 — a super admin's tab used to load /all-meetings and show
+  // every client's meetings inside this one workspace.
+  testWidgets('a super admin sees only this workspace\'s meetings', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.role = 'super_admin';
+    final requested = <Uri>[];
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+      requested.add(inv.positionalArguments.first as Uri);
+      return jsonResponse(
+        '{"meetings":[{"id":1,"title":"Future Sync","status":"scheduled","scheduled_at":"2030-01-01T10:00:00.000Z"}]}',
+      );
+    });
+    final meetingProvider = MeetingProvider(repository: MeetingRepository(api: api));
+    final contractProvider = ContractProvider(api: api);
+
+    await pumpTab(tester, meetingProvider, contractProvider);
+
+    expect(requested.map((u) => u.path), everyElement(endsWith('/workspaces/5/meetings')));
+    expect(requested.any((u) => u.path.contains('all-meetings')), isFalse);
+    expect(find.text('Future Sync'), findsOneWidget);
+  });
+
   testWidgets('shows the empty state when there are no meetings', (tester) async {
     final httpClient = MockHttpClient();
     final api = buildTestApiClient(client: httpClient);
@@ -117,5 +140,78 @@ void main() {
     expect(sentBody!['title'], 'Kickoff Call');
     verify(() => httpClient.post(any(that: predicate<Uri>((u) => u.path.endsWith('/workspaces/5/meetings'))),
         headers: any(named: 'headers'), body: any(named: 'body'))).called(1);
+  });
+
+  // 23 Sept 2026 — the Edit/Completed/Cancel row used to inherit the
+  // app-wide OutlinedButtonThemeData padding (24px horizontal, sized for a
+  // single full-width button), which left too little room for three
+  // buttons side by side and made them collide on a real phone width.
+  testWidgets('the Edit/Completed/Cancel row renders without overflowing on a real phone width', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.role = 'account_manager';
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer(
+      (_) async => jsonResponse(
+        '{"meetings":[{"id":1,"title":"Future Sync","status":"scheduled","scheduled_at":"2030-01-01T10:00:00.000Z"}]}',
+      ),
+    );
+    final meetingProvider = MeetingProvider(repository: MeetingRepository(api: api));
+    final contractProvider = ContractProvider(api: api);
+
+    await pumpTab(tester, meetingProvider, contractProvider);
+
+    expect(tester.takeException(), isNull);
+    expect(find.widgetWithText(OutlinedButton, 'Edit'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Completed'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Cancel'), findsOneWidget);
+  });
+
+  testWidgets('Zoom meeting displays "Start meeting" when no host is claimed, and clicking calls enter', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 42;
+    api.role = 'account_manager';
+    final now = DateTime.now().toUtc().toIso8601String();
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer(
+      (_) async => jsonResponse(
+        '{"meetings":[{"id":10,"title":"Zoom Host Sync","status":"scheduled","scheduled_at":"$now","link":"https://zoom.us/j/123","zoom_meeting_id":"123","host_user_id":null}]}',
+      ),
+    );
+    when(() => httpClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body')))
+        .thenAnswer((_) async => jsonResponse('{"url":"https://zoom.us/s/123?zak=token","as":"host"}'));
+
+    final meetingProvider = MeetingProvider(repository: MeetingRepository(api: api));
+    final contractProvider = ContractProvider(api: api);
+
+    await pumpTab(tester, meetingProvider, contractProvider);
+
+    expect(find.widgetWithText(OutlinedButton, 'Start meeting'), findsOneWidget);
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Start meeting'));
+    await tester.pump();
+
+    verify(() => httpClient.post(any(that: predicate<Uri>((u) => u.path.endsWith('/meetings/10/enter'))),
+        headers: any(named: 'headers'), body: any(named: 'body'))).called(1);
+  });
+
+  testWidgets('Zoom meeting displays "Join" when another host is already claimed', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 42;
+    api.role = 'account_manager';
+    final now = DateTime.now().toUtc().toIso8601String();
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer(
+      (_) async => jsonResponse(
+        '{"meetings":[{"id":11,"title":"Zoom Other Host Sync","status":"scheduled","scheduled_at":"$now","link":"https://zoom.us/j/123","zoom_meeting_id":"123","host_user_id":99}]}',
+      ),
+    );
+
+    final meetingProvider = MeetingProvider(repository: MeetingRepository(api: api));
+    final contractProvider = ContractProvider(api: api);
+
+    await pumpTab(tester, meetingProvider, contractProvider);
+
+    expect(find.widgetWithText(OutlinedButton, 'Join'), findsOneWidget);
   });
 }

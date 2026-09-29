@@ -37,12 +37,12 @@ class _MeetingsTabState extends State<MeetingsTab> {
   }
 
   Future<void> _load() async {
-    final isSA = _api.role == 'super_admin';
     setState(() { if (_meetings.isEmpty) _loading = true; _error = null; });
     try {
-      _meetings = isSA
-          ? await _meetingProvider.fetchAllWorkspacesRaw()
-          : await _meetingProvider.fetchForWorkspaceRaw((widget.workspaceId ?? _api.workspaceId)!);
+      // 23 Sept 2026 - a super admin used to load /all-meetings here, so this
+      // workspace's tab listed every client's meetings. Everyone now loads
+      // this workspace's meetings only.
+      _meetings = await _meetingProvider.fetchForWorkspaceRaw((widget.workspaceId ?? _api.workspaceId)!);
     } catch (_) {
       if (mounted) _error = AppLocalizations.of(context)?.amMeetingsLoadFailed;
     }
@@ -132,6 +132,29 @@ class _MeetingsTabState extends State<MeetingsTab> {
       }
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.meetingCompleteFailed)));
+    }
+  }
+
+  int? _enteringMeetingId;
+
+  Future<void> _enterMeeting(dynamic m) async {
+    final meetingId = m['id'] as int?;
+    if (meetingId == null || _enteringMeetingId != null) return;
+    setState(() => _enteringMeetingId = meetingId);
+    try {
+      final res = await _meetingProvider.enterMeeting(meetingId);
+      await launchUrl(Uri.parse(res.url), mode: LaunchMode.externalApplication);
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+        ));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _enteringMeetingId = null);
+      }
     }
   }
 
@@ -266,13 +289,37 @@ class _MeetingsTabState extends State<MeetingsTab> {
             Builder(
               builder: (ctx) {
                 final joinStatus = getMeetingJoinStatus(m['scheduled_at'], AppLocalizations.of(ctx)!);
+                final isZoom = m['zoom_meeting_id'] != null;
+                final hostUserId = m['host_user_id'] as int?;
+                final isHost = hostUserId == null || hostUserId == _api.userId;
+                final isEntering = _enteringMeetingId == m['id'];
+
+                final String buttonLabel;
+                if (isEntering) {
+                  buttonLabel = l10n.meeting_opening;
+                } else if (isZoom) {
+                  buttonLabel = isHost ? l10n.meeting_startAsHost : l10n.meeting_join;
+                } else {
+                  buttonLabel = joinStatus.label;
+                }
+
                 return Row(children: [
                   Expanded(
                     child: joinStatus.canJoin
                         ? OutlinedButton.icon(
-                            onPressed: () => launchUrl(Uri.parse(m['link']), mode: LaunchMode.externalApplication),
-                            icon: const Icon(Icons.videocam, size: 18),
-                            label: Text(joinStatus.label),
+                            onPressed: isEntering
+                                ? null
+                                : () => isZoom
+                                    ? _enterMeeting(m)
+                                    : launchUrl(Uri.parse(m['link']), mode: LaunchMode.externalApplication),
+                            icon: isEntering
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.videocam, size: 18),
+                            label: Text(buttonLabel),
                           )
                         : Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -306,28 +353,47 @@ class _MeetingsTabState extends State<MeetingsTab> {
           ],
           if (isScheduled && !isSA) ...[
             const SizedBox(height: 12),
+            // 23 Sept 2026 — three buttons in equal Expanded thirds used to
+            // inherit the app-wide OutlinedButtonThemeData padding (24px
+            // horizontal, meant for a single full-width button), leaving
+            // almost no room for icon+label and causing them to collide.
+            // Same tighter-padding + explicit small-label-style override
+            // already used for multi-button rows elsewhere (see the
+            // Approve/Request-edit row in approvals_tab.dart).
             Row(children: [
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => _showEditSheet(m),
-                  icon: const Icon(Icons.edit, size: 16),
-                  label: Text(l10n.edit),
+                  icon: const Icon(Icons.edit, size: 15),
+                  label: Text(l10n.edit, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => _completeMeeting(m),
-                  icon: const Icon(Icons.check_circle_outline, size: 16, color: ShadColors.success),
-                  label: Text(l10n.meetingDone, style: const TextStyle(color: ShadColors.success)),
+                  icon: const Icon(Icons.check_circle_outline, size: 15, color: ShadColors.success),
+                  label: Text(l10n.meetingDone, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: ShadColors.success)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => _cancelMeeting(m),
-                  icon: const Icon(Icons.cancel_outlined, size: 16, color: ShadColors.error),
-                  label: Text(l10n.cancel, style: const TextStyle(color: ShadColors.error)),
+                  icon: const Icon(Icons.cancel_outlined, size: 15, color: ShadColors.error),
+                  label: Text(l10n.cancel, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: ShadColors.error)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ),
             ]),

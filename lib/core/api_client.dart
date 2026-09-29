@@ -229,6 +229,13 @@ class ApiClient {
     return _handle(response);
   }
 
+  /// Longer than [_timeout]: a file upload has to actually transfer bytes
+  /// over whatever connection the phone has, not just wait on a server
+  /// round-trip like every other request here. 30s was tripping on real
+  /// (slow/mobile) networks well before the upload itself was the problem —
+  /// payment-proof-upload-plan.md, Stage 2.
+  final Duration _uploadTimeout = const Duration(seconds: 120);
+
   /// Same "never got a response" -> [ConnectionException] translation as
   /// [_send], but for the multipart trio below. Those build an
   /// [http.MultipartRequest] and call `_httpClient.send(...)` directly
@@ -239,13 +246,13 @@ class ApiClient {
   /// docs/mobile-review-2026-08.md, P1 #3.
   Future<http.StreamedResponse> _sendMultipart(http.MultipartRequest request) async {
     try {
-      return await _httpClient.send(request).timeout(_timeout);
+      return await _httpClient.send(request).timeout(_uploadTimeout);
     } on SocketException catch (e) {
       throw ConnectionException(e.message.isNotEmpty ? e.message : 'Network unreachable');
     } on http.ClientException catch (e) {
       throw ConnectionException(e.message);
     } on TimeoutException {
-      throw ConnectionException('Request timed out after ${_timeout.inSeconds}s');
+      throw ConnectionException('Request timed out after ${_uploadTimeout.inSeconds}s');
     }
   }
 
@@ -287,13 +294,22 @@ class ApiClient {
     return _send(() => _httpClient.delete(Uri.parse('$baseUrl$path'), headers: headers));
   }
 
+  /// Sends a POST with a `_method=PUT` field rather than a real multipart
+  /// PUT request. PHP does not parse the body of a multipart PUT request at
+  /// all (neither files nor fields reach the request) — this is PHP's own
+  /// behavior, not something specific to this backend. Laravel's method
+  /// spoofing (`_method`) is the standard workaround, and the web dashboard
+  /// already uses it for this exact route (ClientPayments.tsx). Before this,
+  /// a client uploading proof for a scheduled installment had their file
+  /// silently dropped: the request "succeeded" (the field-less PUT still
+  /// validated, since proof_files is nullable) and the payment moved to
+  /// pending with no proof attached at all.
   Future<Map<String, dynamic>> multipartPut(String path, Map<String, dynamic> fields,
-      {List<File>? multipleFiles,
-      String multipleFileField = 'files[]',
-      List<Uint8List>? multipleBytes,
-      List<String>? multipleBytesNames}) async {
-    final request = http.MultipartRequest('PUT', Uri.parse('$baseUrl$path'));
+      {List<File>? multipleFiles, String multipleFileField = 'files[]',
+       List<Uint8List>? multipleBytes, List<String>? multipleBytesNames}) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'));
     request.headers.addAll(await _headers(multipart: true));
+    request.fields['_method'] = 'PUT';
     fields.forEach((key, value) => request.fields[key] = value.toString());
     if (multipleFiles != null) {
       for (final f in multipleFiles) {
@@ -390,10 +406,23 @@ class ApiClient {
     if (response.statusCode == 422) {
       final errors = data['errors'] as Map<String, dynamic>?;
       final firstError = errors?.values.firstOrNull;
-      final msg = firstError is List
-          ? firstError.first.toString()
-          : (data['message'] ?? l10n?.invalidData ?? 'Invalid data');
-      throw ValidationException(msg);
+      final msg = firstError is List ? firstError.first.toString() : (data['message'] ?? l10n?.invalidData ?? 'Invalid data');
+      // A handful of 422s carry a machine-readable `code` alongside the
+      // human-readable `message` (e.g. 'signature_required' from
+      // ContractController::clientAction/ChatController::respond — see
+      // client-signature-plan.md) so a caller can react to the specific
+      // reason instead of just showing the generic message. Absent on plain
+      // Laravel validation-rule failures, which never set this field.
+      throw ValidationException(msg, code: data['code'] as String?, data: data);
+    }
+    // A reverse proxy's own body-size cap (nginx's client_max_body_size,
+    // commonly a 1MB default) rejects an oversized upload before it ever
+    // reaches Laravel, so `data` here is empty (an HTML error page, not
+    // JSON) — there's no server-provided message to surface, only this
+    // generic one. Compressing images before upload (see proof_image_picker)
+    // keeps uploads well under this in practice.
+    if (response.statusCode == 413) {
+      throw ValidationException(l10n?.fileTooLarge ?? 'File is too large');
     }
     // 429 is its own case: the credentials may be perfectly correct, the
     // caller just tripped Laravel's `throttle` middleware. Reporting it as a
@@ -424,7 +453,9 @@ class AuthException implements Exception {
 
 class ValidationException implements Exception {
   final String message;
-  ValidationException(this.message);
+  final String? code;
+  final Map<String, dynamic>? data;
+  ValidationException(this.message, {this.code, this.data});
   @override
   String toString() => message;
 }

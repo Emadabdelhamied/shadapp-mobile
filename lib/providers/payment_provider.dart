@@ -24,7 +24,7 @@ class PaymentProvider {
   String? get error => _error;
 
   /// AM-side approve/reject decision — see [PaymentRepository.review].
-  Future<Map<String, dynamic>> reviewPayment(int paymentId, String action) => _repo.review(paymentId, action);
+  Future<Map<String, dynamic>> reviewPayment(int paymentId, String action, {String? notes}) => _repo.review(paymentId, action, notes: notes);
 
   /// Creates an installment schedule — see [PaymentRepository.schedule].
   Future<void> schedulePayments(int workspaceId, List<Map<String, dynamic>> installments) =>
@@ -37,9 +37,12 @@ class PaymentProvider {
   Future<void> deletePaymentSchedule(int paymentId) => _repo.deleteSchedule(paymentId);
 
   /// Sends a payment request to the client — see
-  /// [PaymentRepository.requestPayment].
-  Future<void> requestPayment(int workspaceId, double amount, String currency, {String? notes}) =>
-      _repo.requestPayment(workspaceId, amount, currency, notes: notes);
+  /// [PaymentRepository.requestPayment]. [contractId] is passed through when
+  /// the workspace has more than one contract currency and the caller had
+  /// to pick one explicitly (plans/payment-currency-plan.md ح3) — the
+  /// backend enforces currency = that contract's regardless.
+  Future<void> requestPayment(int workspaceId, double amount, String currency, {String? notes, int? contractId}) =>
+      _repo.requestPayment(workspaceId, amount, currency, notes: notes, contractId: contractId);
 
   /// Raw envelope — see [PaymentRepository.fetchForWorkspaceEnvelope].
   /// payments_page.dart owns its own loading/error state for this combined

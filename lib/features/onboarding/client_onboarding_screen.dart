@@ -7,6 +7,8 @@ import 'package:shadapp_client/generated/app_localizations.dart';
 import '../../core/api_client.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
+import '../../core/helpers/signature_required_dialog.dart';
+import '../../core/helpers/required_documents_dialog.dart';
 import '../../core/locale_provider.dart';
 import '../../core/reverb_service.dart';
 import '../../core/widgets/shad_logo.dart';
@@ -20,6 +22,7 @@ import '../../providers/system_settings_provider.dart';
 import '../contracts/contract_detail_modal.dart';
 import 'client_onboarding_payment_sheet.dart';
 import 'client_onboarding_stages.dart';
+import 'onboarding_toast_keys.dart';
 
 class ClientOnboardingScreen extends StatefulWidget {
   final ApiClient? api;
@@ -27,6 +30,9 @@ class ClientOnboardingScreen extends StatefulWidget {
   // Lets widget tests skip FirebaseMessaging.onMessage/.onMessageOpenedApp,
   // same reasoning as client_dashboard_screen.dart's identical seam.
   final bool enableFcm;
+  /// Optional stream seam for widget tests to drive foreground FCM messages
+  /// without requiring a live Firebase / MethodChannel runtime.
+  final Stream<RemoteMessage>? foregroundMessages;
   final ClientProvider? clientProvider;
   final ContractProvider? contractProvider;
   final PaymentProvider? paymentProvider;
@@ -37,6 +43,7 @@ class ClientOnboardingScreen extends StatefulWidget {
     this.api,
     this.reverb,
     this.enableFcm = true,
+    this.foregroundMessages,
     this.clientProvider,
     this.contractProvider,
     this.paymentProvider,
@@ -50,6 +57,9 @@ class ClientOnboardingScreen extends StatefulWidget {
 class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with WidgetsBindingObserver {
   late final ApiClient _api = widget.api ?? ApiClient();
   late final ReverbService _reverb = widget.reverb ?? ReverbService();
+  // plans/notifications-badges-toasts-plan.md ن15 — see the identical field
+  // in client_dashboard_screen.dart for why this list exists.
+  final List<VoidCallback> _reverbUnsubscribers = [];
   late final ClientProvider _clientProvider = widget.clientProvider ?? ClientProvider(repository: ClientRepository(api: _api));
   late final ContractProvider _contractProvider = widget.contractProvider ?? ContractProvider(api: _api);
   late final PaymentProvider _paymentProvider = widget.paymentProvider ?? PaymentProvider(repository: PaymentRepository(api: _api));
@@ -78,8 +88,10 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
     if (contractsList.any((c) => c is Map && c['status'] == 'archived')) return 4;
     if (contractsList.any((c) => c is Map && c['status'] == 'company_approved')) return 4;
     if (contractsList.any((c) => c is Map && c['status'] == 'client_approved')) return 3;
-    if (contractsList.any((c) => c is Map && c['status'] == 'edit_requested')) return 2;
-    if (contractsList.any((c) => c is Map && c['status'] == 'sent')) return 2;
+    final hasSent = contractsList.any((c) => c is Map && c['status'] == 'sent');
+    if (hasSent) return client['signed_at'] != null ? 2 : 0;
+    final hasEditRequested = contractsList.any((c) => c is Map && c['status'] == 'edit_requested');
+    if (hasEditRequested) return 6;
     if (client['signed_at'] != null) return 1;
     return 0;
   }
@@ -92,34 +104,57 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
     WidgetsBinding.instance.addObserver(this);
   }
 
+  int? _joinedWsId;
+  final Map<String, DateTime> _recentToasts = {};
+
+  void _showToastOnce(String? text, {required String key}) {
+    if (text == null || text.trim().isEmpty) return;
+    final now = DateTime.now();
+    if (!shouldShowToast(_recentToasts, key, now)) return;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(text, style: const TextStyle(fontSize: 13)),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      duration: const Duration(seconds: 3),
+    ));
+  }
+
   void _setupRealtimeNotifications() {
     final cid = _api.userId;
     if (cid == null) return;
     _reverb.connectForClient(cid);
-    _reverb.onNotificationReceived = (payload) {
+    _reverbUnsubscribers.add(_reverb.addNotificationReceivedListener((payload) {
       _loadClientData();
       _contractRefreshNotifier.value++;
       if (!mounted) return;
-      final msg = (payload['data'] as Map?)?['message'] as String? ?? (payload['data'] as Map?)?['text'] as String? ?? AppLocalizations.of(context)!.onboarding_newNotification;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(msg, style: const TextStyle(fontSize: 13)),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 3),
-      ));
-    };
-    _reverb.onContractStatusChanged = () {
+      final dynamic rawData = payload['data'];
+      final dataMap = rawData is Map ? rawData : null;
+      final msg = (payload['message'] ?? payload['text'] ?? dataMap?['message'] ?? dataMap?['text']) as String? 
+          ?? AppLocalizations.of(context)!.onboarding_newNotification;
+      _showToastOnce(msg, key: toastKeyFromBroadcast(payload));
+    }));
+    _reverbUnsubscribers.add(_reverb.addContractStatusChangedListener(() {
       _loadClientData();
       _contractRefreshNotifier.value++;
-    };
-    if (widget.enableFcm) {
-      _fcmSubscription = FirebaseMessaging.onMessage.listen((msg) {
+    }));
+    _reverbUnsubscribers.add(_reverb.addWorkspaceStatusChangedListener((_) {
+      _loadClientData();
+    }));
+    final fcmStream = widget.foregroundMessages ??
+        (widget.enableFcm ? FirebaseMessaging.onMessage : null);
+    if (fcmStream != null) {
+      _fcmSubscription = fcmStream.listen((msg) {
         final type = msg.data['type'] as String? ?? '';
-        if (type == 'contract.company_approved' || type == 'contract.completed' || type == 'payment.approved') {
-          _loadClientData();
-        }
+        if (!(type.startsWith('contract.') || type.startsWith('payment.') || type.startsWith('workspace.'))) return;
+        _loadClientData();
+        _contractRefreshNotifier.value++;
+        final body = msg.notification?.body ?? msg.data['message'] as String?;
+        _showToastOnce(body, key: toastKeyFromFcm(msg.data));
       });
+    }
+    if (widget.enableFcm && widget.foregroundMessages == null) {
       FirebaseMessaging.onMessageOpenedApp.listen((msg) {
         _loadClientData();
       });
@@ -137,6 +172,12 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _fcmSubscription?.cancel();
+    for (final unsubscribe in _reverbUnsubscribers) {
+      unsubscribe();
+    }
+    if (_joinedWsId != null) {
+      _reverb.leaveWorkspace(_joinedWsId!);
+    }
     super.dispose();
   }
 
@@ -155,8 +196,14 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
       _taxSettings = settingsData['settings'] as Map<String, dynamic>?;
       if (_workspace != null) {
         final wsId = _workspace!['id'] as int?;
-        if (wsId != null && wsId != _api.workspaceId) {
-          await _api.setUserData(workspace: wsId);
+        if (wsId != null) {
+          if (wsId != _api.workspaceId) {
+            await _api.setUserData(workspace: wsId);
+          }
+          if (_joinedWsId != wsId) {
+            await _reverb.connect(wsId);
+            _joinedWsId = wsId;
+          }
         }
       }
       _checkAutoAdvance();
@@ -400,6 +447,14 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
           title: AppLocalizations.of(context)!.onboarding_reviewingPayment,
           subtitle: AppLocalizations.of(context)!.onboarding_waitingActivation,
         );
+      case 6:
+        return buildWaitingStage(
+          context: context,
+          icon: Icons.edit_note,
+          iconColor: ShadColors.warning,
+          title: AppLocalizations.of(context)!.onboardingWaitingEditContract,
+          subtitle: AppLocalizations.of(context)!.onboardingWaitingEditContractMsg,
+        );
       default:
         return buildSignatureStage(
           context: context,
@@ -438,7 +493,10 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
     if (ws == null) return;
     final contracts = safeList(ws['contracts']);
     if (contracts.isEmpty) return;
-    final c = contracts.first as Map;
+    final c = contracts.firstWhere(
+      (contract) => contract is Map && contract['status'] == 'sent',
+      orElse: () => contracts.first,
+    ) as Map;
     await _respondToContractById(c['id'] as int, action);
   }
 
@@ -474,16 +532,21 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
         ));
       }
     } catch (e) {
+      if (!mounted) return;
+      if (await maybeShowSignatureRequiredDialog(context, e, isSubUser: _api.subUserId != null)) return;
+      if (!mounted) return;
+      if (await maybeShowRequiredDocumentsDialog(context, e)) return;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.onboarding_failedWithError(e.toString()))));
       }
     }
   }
 
-  void _showPaymentBottomSheet(double suggestedAmount, int? workspaceId) => showOnboardingPaymentSheet(
+  void _showPaymentBottomSheet(double suggestedAmount, int? workspaceId, String currency) => showOnboardingPaymentSheet(
     context: context,
     suggestedAmount: suggestedAmount,
     workspaceId: workspaceId,
+    currency: currency,
     paymentProvider: _paymentProvider,
     loadClientData: _loadClientData,
   );

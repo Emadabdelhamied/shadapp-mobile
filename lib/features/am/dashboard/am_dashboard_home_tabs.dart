@@ -12,18 +12,29 @@
 // unconditional) that must be preserved exactly, not "cleaned up". Same
 // precedent as the chat bubble dedup work: near-duplicates that differ in a
 // real way stay separate.
+//
+// 24 Sept 2026 (server-side-stats-plan.md, Stage 3) — the four summary-card
+// numbers (clientsTotal/contractsActive/paymentsPending/approvalsTotal) are
+// now passed in from GET /dashboard/stats instead of computed here from
+// allClients/allManagers/allContracts/pendingContracts/pendingPayments. The
+// unused `allContracts` param was dropped entirely; allClients/allManagers/
+// pendingContracts/pendingPayments are kept only for the "latest N" preview
+// sections below the cards (recent pending approvals, recent
+// clients/managers) — previews are fine staying capped at whatever page the
+// parent fetched, same as the web dashboard's "recent activity"
+// (server-side-stats-plan.md, W11).
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
 import '../../../core/api_client.dart';
+import '../../../core/helpers/client_status.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/client_type_badge.dart';
 
 Widget buildAmHomeTab({
   required BuildContext context,
   required List<dynamic> allClients,
-  required List<dynamic> allContracts,
   required List<Map<String, dynamic>> pendingContracts,
   required List<dynamic> pendingPayments,
   required bool isSA,
@@ -32,24 +43,25 @@ Widget buildAmHomeTab({
   required VoidCallback onShowAllMeetings,
   required void Function(Map<String, dynamic>) onOpenClient,
   required Future<void> Function() load,
+  required int clientsTotal,
+  required int contractsActive,
+  required int paymentsPending,
+  required int approvalsTotal,
 }) {
   final l10n = AppLocalizations.of(context)!;
-  final totalClients = allClients.length;
-  final activeContracts = allContracts.where((c) => c['status'] == 'company_approved' || c['status'] == 'completed').length;
-  final totalPending = pendingContracts.length + pendingPayments.length;
   return ListView(
     padding: const EdgeInsets.all(16),
     children: [
       Row(children: [
-        Expanded(child: _homeStatCard(l10n.amStatTotalClients, '$totalClients', Icons.people, ShadColors.sent)),
+        Expanded(child: _homeStatCard(l10n.amStatTotalClients, '$clientsTotal', Icons.people, ShadColors.sent)),
         const SizedBox(width: 8),
-        Expanded(child: _homeStatCard(l10n.amStatActiveContracts, '$activeContracts', Icons.description, ShadColors.gold)),
+        Expanded(child: _homeStatCard(l10n.amStatActiveContracts, '$contractsActive', Icons.description, ShadColors.gold)),
       ]),
       const SizedBox(height: 8),
       Row(children: [
-        Expanded(child: _homeStatCard(l10n.amStatPendingPayments, '${pendingPayments.length}', Icons.payments, ShadColors.warning)),
+        Expanded(child: _homeStatCard(l10n.amStatPendingPayments, '$paymentsPending', Icons.payments, ShadColors.warning)),
         const SizedBox(width: 8),
-        Expanded(child: _homeStatCard(l10n.amStatPendingApprovals, '$totalPending', Icons.pending_actions, ShadColors.crimson)),
+        Expanded(child: _homeStatCard(l10n.amStatPendingApprovals, '$approvalsTotal', Icons.pending_actions, ShadColors.crimson)),
       ]),
       const SizedBox(height: 8),
       Row(children: [
@@ -109,7 +121,6 @@ Widget buildAmHomeTab({
 Widget buildHomeTab({
   required BuildContext context,
   required List<dynamic> allManagers,
-  required List<dynamic> allContracts,
   required List<Map<String, dynamic>> pendingContracts,
   required List<dynamic> pendingPayments,
   required ApiClient api,
@@ -117,25 +128,26 @@ Widget buildHomeTab({
   required VoidCallback onShowAllMeetings,
   required void Function(Map<String, dynamic>) onManagerTap,
   required Future<void> Function() load,
+  required int clientsTotal,
+  required int contractsActive,
+  required int paymentsPending,
+  required int approvalsTotal,
 }) {
   final l10n = AppLocalizations.of(context)!;
-  final totalClients = allManagers.fold<int>(0, (sum, m) => sum + ((m['managed_clients_count'] as int? ?? 0)));
-  final activeContracts = allContracts.where((c) => c['status'] == 'company_approved' || c['status'] == 'completed').length;
-  final totalPending = pendingContracts.length + pendingPayments.length;
   return ListView(
     padding: const EdgeInsets.all(16),
     children: [
       // Stats Grid 3x2
       Row(children: [
-        Expanded(child: _homeStatCard(l10n.amStatTotalClients, '$totalClients', Icons.people, ShadColors.sent)),
+        Expanded(child: _homeStatCard(l10n.amStatTotalClients, '$clientsTotal', Icons.people, ShadColors.sent)),
         const SizedBox(width: 8),
-        Expanded(child: _homeStatCard(l10n.amStatActiveContracts, '$activeContracts', Icons.description, ShadColors.gold)),
+        Expanded(child: _homeStatCard(l10n.amStatActiveContracts, '$contractsActive', Icons.description, ShadColors.gold)),
       ]),
       const SizedBox(height: 8),
       Row(children: [
-        Expanded(child: _homeStatCard(l10n.amStatPendingPayments, '${pendingPayments.length}', Icons.payments, ShadColors.warning)),
+        Expanded(child: _homeStatCard(l10n.amStatPendingPayments, '$paymentsPending', Icons.payments, ShadColors.warning)),
         const SizedBox(width: 8),
-        Expanded(child: _homeStatCard(l10n.amStatPendingApprovals, '$totalPending', Icons.pending_actions, ShadColors.crimson)),
+        Expanded(child: _homeStatCard(l10n.amStatPendingApprovals, '$approvalsTotal', Icons.pending_actions, ShadColors.crimson)),
       ]),
       const SizedBox(height: 8),
       Row(children: [
@@ -294,7 +306,7 @@ Widget _clientCard(BuildContext context, ApiClient api, Map<String, dynamic> cli
   final name = client['company_name'] as String? ?? '';
   final person = client['contact_person'] as String? ?? '';
   final paymentStatus = client['payment_status'] as String?;
-  final signedAt = client['signed_at'] as String?;
+  final contracted = clientHasSignedContract(client);
 
   return Container(
     margin: const EdgeInsets.only(bottom: 8),
@@ -354,7 +366,7 @@ Widget _clientCard(BuildContext context, ApiClient api, Map<String, dynamic> cli
             spacing: 6,
             runSpacing: 4,
             children: [
-              _statusChip(Icons.description_outlined, signedAt != null ? l10n.amStatusContracted : l10n.amStatusNotContracted, signedAt != null ? ShadColors.success : ShadColors.textDisabled),
+              _statusChip(Icons.description_outlined, contracted ? l10n.amStatusContracted : l10n.amStatusNotContracted, contracted ? ShadColors.success : ShadColors.textDisabled),
               _statusChip(Icons.payment, paymentStatus == 'approved' ? l10n.amStatusPaid : paymentStatus == 'pending' ? l10n.amStatusPending : '—',
                 paymentStatus == 'approved' ? ShadColors.success : paymentStatus == 'pending' ? ShadColors.warning : ShadColors.textDisabled),
               _statusChip(wsActive ? Icons.check_circle : Icons.schedule, wsActive ? l10n.amStatusActive : l10n.amStatusPending,

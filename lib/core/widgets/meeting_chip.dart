@@ -3,10 +3,16 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
 import '../theme.dart';
 import '../helpers/meeting_helpers.dart';
+import 'status_badge.dart';
 
 class MeetingChip extends StatelessWidget {
   final Map<String, dynamic> metadata;
-  const MeetingChip({super.key, required this.metadata});
+  /// Staff entry: when set, tapping calls this instead of opening
+  /// metadata['link'] (the participant join_url), so the backend can make
+  /// the manager/super admin the host. Clients leave it null.
+  final Future<void> Function(int meetingId)? onEnter;
+  final bool? isHost;
+  const MeetingChip({super.key, required this.metadata, this.onEnter, this.isHost});
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +22,7 @@ class MeetingChip extends StatelessWidget {
     final scheduledAt = metadata['scheduled_at'] as String?;
     final duration = metadata['duration_minutes'] as int?;
     final status = metadata['status'] as String? ?? 'scheduled';
+    final rescheduled = metadata['rescheduled'] == true;
 
     String timeText = '';
     if (scheduledAt != null) {
@@ -73,10 +80,40 @@ class MeetingChip extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.textPrimary)),
+                // 23 Sept 2026 — a completed/cancelled meeting used to look
+                // exactly like an upcoming one here (only the Join pill
+                // below checked status). Now it gets the same StatusBadge
+                // as meetings_tab.dart, and its time line is dimmed. The
+                // backend keeps metadata.status in sync (Meeting::booted()).
+                Row(children: [
+                  Flexible(
+                    child: Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.textPrimary)),
+                  ),
+                  if (status != 'scheduled') ...[
+                    const SizedBox(width: 6),
+                    StatusBadge(status: status, fontSize: 9),
+                  ] else if (rescheduled) ...[
+                    // 23 Sept 2026 — the backend posts a fresh card (with
+                    // metadata.rescheduled) when a meeting's time changes,
+                    // so the client notices; this pill says why it's there.
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: ShadColors.meetingBlueBg,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: ShadColors.meetingBlueBorder, width: 0.5),
+                      ),
+                      child: Text(l10n.meetingChipRescheduled, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: ShadColors.meetingBlue)),
+                    ),
+                  ],
+                ]),
                 if (timeText.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text(timeText, style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
+                  Text(timeText, style: TextStyle(
+                    fontSize: 10,
+                    color: status == 'scheduled' ? ShadColors.textSecondary : ShadColors.textDisabled,
+                  )),
                 ],
               ],
             ),
@@ -86,9 +123,17 @@ class MeetingChip extends StatelessWidget {
             Builder(
               builder: (ctx) {
                 final joinStatus = getMeetingJoinStatus(scheduledAt, l10n);
+                final buttonLabel = onEnter != null
+                    ? ((isHost ?? true) ? l10n.meeting_startAsHost : l10n.meeting_join)
+                    : joinStatus.label;
                 if (joinStatus.canJoin) {
                   return GestureDetector(
                     onTap: () async {
+                      final meetingId = metadata['meeting_id'] as int?;
+                      if (onEnter != null && meetingId != null) {
+                        await onEnter!(meetingId);
+                        return;
+                      }
                       final uri = Uri.tryParse(link);
                       if (uri != null && await canLaunchUrl(uri)) {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -100,7 +145,7 @@ class MeetingChip extends StatelessWidget {
                         color: ShadColors.success,
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Text(joinStatus.label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                      child: Text(buttonLabel, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
                     ),
                   );
                 }

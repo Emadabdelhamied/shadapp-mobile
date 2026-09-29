@@ -74,17 +74,24 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     _pollTick++;
     // The workspace header (next meeting / next payment) changes far less
     // often than the messages do, so it rides along every fourth refresh.
-    if (_pollTick % 4 == 0) _loadWorkspace();
+    if (_pollTick % 4 == 0) {
+      _loadWorkspace();
+      _loadMeetings();
+    }
   });
   int _pollTick = 0;
   Map<String, dynamic>? _workspaceData;
   Map<String, dynamic>? _nextMeeting;
   Map<String, dynamic>? _nextPayment;
+  Map<int, int?> _hostByMeetingId = {};
   bool _requestApproval = false;
   Map<String, dynamic>? _editingMessage;
   Map<String, dynamic>? _replyTo;
   int? get _wsId => widget.workspaceId ?? _api.workspaceId;
   late final ReverbService _reverb = widget.reverb ?? ReverbService();
+  // plans/notifications-badges-toasts-plan.md ن15 — see the identical field
+  // in client_dashboard_screen.dart for why this list exists.
+  final List<VoidCallback> _reverbUnsubscribers = [];
 
   @override
   void initState() {
@@ -92,12 +99,13 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _load().then((_) => _markRead());
     _loadWorkspace();
+    _loadMeetings();
     _startPolling();
     _scrollController.addListener(_onScroll);
     final wsId = _wsId;
     if (wsId != null) {
       final reverb = _reverb;
-      reverb.onMessageReceived = chatOnMessageReceived(
+      _reverbUnsubscribers.add(reverb.addMessageReceivedListener(chatOnMessageReceived(
         state: this,
         setState: setState,
         // Guards against the same message arriving twice — a real
@@ -110,21 +118,31 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
           _messages.add(msg);
         },
         scrollToBottom: _scrollToBottom,
-      );
-      reverb.onMessageUpdated = chatOnMessageUpdated(
+      )));
+      _reverbUnsubscribers.add(reverb.addMessageUpdatedListener(chatOnMessageUpdated(
         state: this,
         setState: setState,
         updateMessage: (msg) {
           final idx = _messages.indexWhere((m) => m['id'] == msg['id']);
           if (idx >= 0) _messages[idx] = msg;
         },
-      );
-      reverb.onContractStatusChanged = () {
+      )));
+      _reverbUnsubscribers.add(reverb.addMessageDeletedListener(chatOnMessageDeleted(
+        state: this,
+        setState: setState,
+        deleteMessage: (messageId) {
+          _messages.removeWhere((m) => m['id'] == messageId);
+        },
+      )));
+      _reverbUnsubscribers.add(reverb.addContractStatusChangedListener(() {
         if (mounted) _load();
-      };
-      reverb.onPaymentScheduleChanged = (_) {
-        if (mounted) _loadWorkspace();
-      };
+      }));
+      _reverbUnsubscribers.add(reverb.addPaymentScheduleChangedListener((_) {
+        if (mounted) {
+          _loadWorkspace();
+          _loadMeetings();
+        }
+      }));
       reverb.connect(wsId);
     }
   }
@@ -151,6 +169,26 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     } catch (e, s) {
       AppLog.error('chat_tab._loadWorkspace', e, s);
     }
+  }
+
+  Future<void> _loadMeetings() async {
+    final wsId = _wsId;
+    if (wsId == null) return;
+    try {
+      final meetings = await _meetingProvider.fetchForWorkspaceRaw(wsId);
+      final hosts = <int, int?>{};
+      for (final m in meetings) {
+        if (m is Map) {
+          final id = m['id'] as int?;
+          if (id != null) {
+            hosts[id] = m['host_user_id'] as int?;
+          }
+        }
+      }
+      if (mounted) {
+        setState(() => _hostByMeetingId = hosts);
+      }
+    } catch (_) {}
   }
 
   Future<void> _load() async {
@@ -333,27 +371,58 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _enterMeetingById(int meetingId) async {
+    try {
+      final res = await _meetingProvider.enterMeeting(meetingId);
+      final uri = Uri.tryParse(res.url);
+      if (uri != null && await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      _loadMeetings();
+    } catch (e, s) {
+      AppLog.error('chat_tab._enterMeetingById', e, s);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+        ));
+      }
+    }
+  }
+
+  Future<void> _enterMeeting(Map<String, dynamic> m) async {
+    final meetingId = m['id'] as int?;
+    final isZoom = m['zoom_meeting_id'] != null;
+    if (isZoom && meetingId != null) {
+      await _enterMeetingById(meetingId);
+    } else {
+      final link = m['link'] as String?;
+      final uri = link != null ? Uri.tryParse(link) : null;
+      if (uri != null && await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    }
+  }
+
   Future<void> _openLatestZoomLink() async {
     final wsId = _wsId;
     if (wsId == null) return;
     try {
       final meetings = await _meetingProvider.fetchForWorkspaceRaw(wsId);
       if (!mounted) return;
-      String? zoomLink;
-      String? scheduledAt;
+      Map<String, dynamic>? targetMeeting;
       for (final m in meetings.reversed) {
         final link = m['link'] as String?;
         final status = m['status'] as String?;
         if (link != null && status == 'scheduled') {
-          zoomLink = link;
-          scheduledAt = m['scheduled_at'] as String?;
+          targetMeeting = m is Map<String, dynamic> ? m : Map<String, dynamic>.from(m);
           break;
         }
       }
-      if (zoomLink == null) {
+      if (targetMeeting == null) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.chatNoActiveMeeting)));
         return;
       }
+      final scheduledAt = targetMeeting['scheduled_at'] as String?;
       if (scheduledAt != null) {
         final joinStatus = getMeetingJoinStatus(scheduledAt, AppLocalizations.of(context)!);
         if (!joinStatus.canJoin) {
@@ -361,10 +430,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
           return;
         }
       }
-      final uri = Uri.tryParse(zoomLink);
-      if (uri != null && await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      await _enterMeeting(targetMeeting);
     } catch (e, s) {
       AppLog.error('chat_tab._openLatestZoomLink', e, s);
     }
@@ -387,11 +453,19 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     _poller.stop();
     _controller.dispose();
     _scrollController.dispose();
-    final uid = _api.userId;
-    if (uid != null) {
-      _reverb.connectForUser(uid);
-    } else {
-      _reverb.disconnect();
+    // plans/notifications-badges-toasts-plan.md ن15 — used to reconnect for
+    // the AM's own user channel here to *override* the workspace channel
+    // this screen had taken over, since only one channel could ever be
+    // subscribed at a time. Now that connect(wsId) above is additive, the
+    // user channel (joined by am_dashboard_page.dart before this screen ever
+    // opened) was never dropped in the first place — this screen only needs
+    // to leave the one channel it joined itself.
+    final wsId = _wsId;
+    if (wsId != null) {
+      _reverb.leaveWorkspace(wsId);
+    }
+    for (final unsubscribe in _reverbUnsubscribers) {
+      unsubscribe();
     }
     super.dispose();
   }
@@ -479,6 +553,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
         inHoursLabel: l10n.chatInHours,
         inDaysLabel: l10n.chatInDays,
         joinLabel: l10n.chatJoin,
+        onTap: () => _enterMeeting(_nextMeeting!),
       ),
       // Upcoming Payment Banner
       if (_nextPayment != null)
@@ -681,5 +756,10 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     messages: _messages,
     api: _api,
     onLongPressMessage: _showMessageActions,
+    onEnterMeeting: _enterMeetingById,
+    isHostFor: (meetingId) {
+      final hostId = _hostByMeetingId[meetingId];
+      return hostId == null || hostId == _api.userId;
+    },
   );
 }

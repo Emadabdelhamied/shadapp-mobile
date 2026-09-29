@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/api_client.dart';
 import '../../../core/app_log.dart';
+import '../../../core/helpers/client_status.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/client_type_badge.dart';
 import '../../../models/manager.dart';
@@ -52,7 +53,13 @@ class _SaClientsPageState extends State<SaClientsPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final clients = await _clientProvider.fetchClientsRaw(managerId: _selectedManagerId);
+      // server-side-stats-plan.md, Stage 3 (M6) — was fetchClientsRaw(), a
+      // single page (server-side hard cap of 30). A company with more
+      // clients than that had the rest simply missing from this list (not
+      // just from a count), and the filter-pill counts below were computed
+      // from that same incomplete list. Every page, still scoped to the
+      // selected manager when one is chosen.
+      final clients = await _clientProvider.fetchAllClientsPaginatedRaw(managerId: _selectedManagerId);
       if (mounted) setState(() { _allClients = clients.cast<Map<String, dynamic>>(); });
     } catch (e, s) {
       AppLog.error('sa_clients_page._load', e, s);
@@ -126,8 +133,8 @@ class _SaClientsPageState extends State<SaClientsPage> {
     }
     switch (_filterIndex) {
       case 1: return filtered.where((c) => (c['workspace'] as Map<String, dynamic>?)?['status'] == 'active').toList();
-      case 2: return filtered.where((c) => c['signed_at'] == null).toList();
-      case 3: return filtered.where((c) => c['signed_at'] != null && (c['workspace'] as Map<String, dynamic>?)?['status'] != 'active').toList();
+      case 2: return filtered.where((c) => !clientHasSignedContract(c)).toList();
+      case 3: return filtered.where((c) => clientHasSignedContract(c) && (c['workspace'] as Map<String, dynamic>?)?['status'] != 'active').toList();
       default: return filtered;
     }
   }
@@ -232,8 +239,8 @@ class _SaClientsPageState extends State<SaClientsPage> {
   Widget _buildPillsFilter() {
     final l10n = AppLocalizations.of(context)!;
     final active = _allClients.where((c) => (c['workspace'] as Map<String, dynamic>?)?['status'] == 'active').length;
-    final pending = _allClients.where((c) => c['signed_at'] == null).length;
-    final review = _allClients.where((c) => c['signed_at'] != null && (c['workspace'] as Map<String, dynamic>?)?['status'] != 'active').length;
+    final pending = _allClients.where((c) => !clientHasSignedContract(c)).length;
+    final review = _allClients.where((c) => clientHasSignedContract(c) && (c['workspace'] as Map<String, dynamic>?)?['status'] != 'active').length;
     final filters = [
       (l10n.all, _allClients.length),
       (l10n.active, active),
@@ -275,7 +282,7 @@ class _SaClientsPageState extends State<SaClientsPage> {
     final name = client['company_name'] as String? ?? '';
     final person = client['contact_person'] as String? ?? '';
     final phone = client['phone'] as String?;
-    final signedAt = client['signed_at'] as String?;
+    final contracted = clientHasSignedContract(client);
     final initials = name.isNotEmpty ? name.substring(0, name.length.clamp(0, 2)).toUpperCase() : '?';
 
     return GestureDetector(
@@ -321,12 +328,12 @@ class _SaClientsPageState extends State<SaClientsPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: (wsActive ? ShadColors.success : signedAt == null ? ShadColors.gold : ShadColors.sent).withAlpha(20),
+                  color: (wsActive ? ShadColors.success : !contracted ? ShadColors.gold : ShadColors.sent).withAlpha(20),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  wsActive ? l10n.active : signedAt == null ? l10n.pending : l10n.underReview,
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: wsActive ? ShadColors.success : signedAt == null ? ShadColors.gold : ShadColors.sent, fontFamily: 'Archivo'),
+                  wsActive ? l10n.active : !contracted ? l10n.pending : l10n.underReview,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: wsActive ? ShadColors.success : !contracted ? ShadColors.gold : ShadColors.sent, fontFamily: 'Archivo'),
                 ),
               ),
               const SizedBox(height: 4),
@@ -343,7 +350,6 @@ class _SaClientsPageState extends State<SaClientsPage> {
 
   void _showClientActions(Map<String, dynamic> client) {
     final l10n = AppLocalizations.of(context)!;
-    final clientId = int.tryParse(client['id']?.toString() ?? '') ?? 0;
     final name = client['company_name'] as String? ?? '';
     showModalBottomSheet(
       context: context,
@@ -359,39 +365,8 @@ class _SaClientsPageState extends State<SaClientsPage> {
             title: Text(l10n.clientDetailEditTitle),
             onTap: () { Navigator.pop(ctx); context.push<bool>('/am/clients/${client['id']}').then((v) { if (v == true) _load(); }); },
           ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline, color: ShadColors.error),
-            title: Text(l10n.saClientsDeleteTitle, style: const TextStyle(color: ShadColors.error)),
-            onTap: () { Navigator.pop(ctx); _deleteClient(clientId, name); },
-          ),
         ]),
       ),
     );
-  }
-
-  Future<void> _deleteClient(int id, String name) async {
-    final l10n = AppLocalizations.of(context)!;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.saClientsDeleteTitle),
-        content: Text(l10n.saClientsDeleteConfirmation(name)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.of(ctx)!.cancel)),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error),
-            child: Text(AppLocalizations.of(ctx)!.delete, style: const TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-    try {
-      await _clientProvider.deleteClient(id);
-      _load();
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.saClientsDeleteFailed)));
-    }
   }
 }

@@ -3,10 +3,14 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../core/api_client.dart';
 import '../core/app_log.dart';
+import '../core/notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiClient _api;
-  AuthProvider({ApiClient? api}) : _api = api ?? ApiClient();
+  final NotificationService _notificationService;
+  AuthProvider({ApiClient? api, NotificationService? notificationService})
+      : _api = api ?? ApiClient(),
+        _notificationService = notificationService ?? NotificationService();
   bool _isLoading = false;
   String? _error;
   bool _isLoggedIn = false;
@@ -35,6 +39,13 @@ class AuthProvider extends ChangeNotifier {
       _role = user['role'];
       _userName = user['name'];
       _isLoggedIn = true;
+      // plans/notifications-badges-toasts-plan.md ن1 — the token
+      // NotificationService.init() registered at app startup (main.dart) was
+      // sent unauthenticated and 401'd silently, since nothing retried it
+      // once a user actually logged in. This resends the already-cached
+      // token now that there's a session for it to attach to; a no-op if
+      // there isn't one yet (registerCurrentToken swallows its own errors).
+      await _notificationService.registerCurrentToken();
       return true;
     } catch (e) {
       _error = e.toString();
@@ -60,6 +71,9 @@ class AuthProvider extends ChangeNotifier {
       await _api.setUserData(id: client['id'], workspace: res['workspace_id']);
       _role = 'client';
       _isLoggedIn = true;
+      // See the matching comment in login() above — plans/notifications-
+      // badges-toasts-plan.md ن1.
+      await _notificationService.registerCurrentToken();
       return true;
     } catch (e) {
       _error = e.toString();
@@ -99,6 +113,20 @@ class AuthProvider extends ChangeNotifier {
         isClient = true;
       }
 
+      // 19 Sept 2026 — a fresh login must start from a clean session, not
+      // build on top of whatever the previous account left behind on this
+      // device. setUserData()/setRole() below only ever WRITE a field when
+      // the new value is non-null (see ApiClient.setUserData), so if this
+      // response's workspace_id happens to be null (client has no workspace
+      // yet — see AuthController::clientLogin's null-safe lookup), the
+      // *previous* session's workspaceId silently survived untouched. Every
+      // workspace-scoped screen (contracts/chat/payments/meetings/files)
+      // reads that same stale value directly, so a sub-user or client could
+      // end up making every workspace-scoped request against someone else's
+      // workspace — 403ing on all of them since ScopeWorkspace correctly
+      // rejects the mismatch, but confusingly so, and only by luck rather
+      // than by anything actually clearing the old value.
+      await _api.clearToken();
       await _api.setToken(data['token']);
 
       if (isClient) {
@@ -129,6 +157,9 @@ class AuthProvider extends ChangeNotifier {
         _userName = user['name'] as String?;
       }
       _isLoggedIn = true;
+      // See the matching comment in login() above — plans/notifications-
+      // badges-toasts-plan.md ن1. This is the path LoginPage actually calls.
+      await _notificationService.registerCurrentToken();
     } catch (e) {
       _error = e.toString();
       rethrow;
@@ -168,6 +199,24 @@ class AuthProvider extends ChangeNotifier {
   Future<void> requestClientPasswordReset(String email) => _api.post('/auth/client/forgot-password', {'email': email});
 
   Future<void> logout() async {
+    // plans/notifications-badges-toasts-plan.md ن1 — without this, the
+    // device's FCM token stayed registered to this account after logout, so
+    // whoever logged in next on the same phone kept receiving the previous
+    // person's push notifications until the app was fully closed and
+    // reopened. Must happen *before* /auth/logout below: that call revokes
+    // the Sanctum token this request needs to authenticate.
+    final fcmToken = _notificationService.fcmToken;
+    if (fcmToken != null) {
+      try {
+        await _api.post('/notifications/unregister-token', {'token': fcmToken});
+      } catch (e, s) {
+        // Non-fatal, same reasoning as the /auth/logout failure below: worst
+        // case this device keeps getting push for the account that just
+        // logged out until FcmChannel's own unregistered-token cleanup
+        // catches it server-side.
+        AppLog.error('AuthProvider.logout.unregisterToken', e, s);
+      }
+    }
     try {
       await _api.post('/auth/logout');
     } catch (e, s) {

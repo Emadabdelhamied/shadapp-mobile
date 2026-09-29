@@ -28,6 +28,8 @@
 // individual embedded screens' own behavior beyond "it loads without
 // crashing" — each of those already has its own characterization/unit test
 // suite.
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -55,12 +57,13 @@ void main() {
     String clientJson = '{"client":{"id":10,"signed_at":"2026-01-01T00:00:00Z","workspace":{"id":5,"status":"active","contracts":[],"payments":[]}}}',
     String subUserJson = '{"sub_user":{"id":1,"permissions":{}}}',
     int unreadNotifs = 0,
+    String badgeCountsJson = '{"contracts":"0","payments":"0","approvals":"0","files":"0","chat":"0"}',
   }) {
     when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
       final path = (inv.positionalArguments[0] as Uri).path;
       if (path == '/clients/10') return jsonResponse(clientJson);
       if (path == '/notifications') return jsonResponse('{"unread_count":"$unreadNotifs"}');
-      if (path == '/badge-counts') return jsonResponse('{"contracts":"0","payments":"0","approvals":"0","files":"0"}');
+      if (path == '/badge-counts') return jsonResponse(badgeCountsJson);
       if (path == '/sub-users/1') return jsonResponse(subUserJson);
       if (path == '/workspaces/5/chat') return jsonResponse('{"messages":[]}');
       if (path == '/workspaces/5/contracts') return jsonResponse('{"contracts":[]}');
@@ -149,6 +152,84 @@ void main() {
     expect(find.text('3'), findsOneWidget);
   });
 
+  // plans/notifications-badges-toasts-plan.md ن12 — the bell used to leave
+  // its badge showing the stale pre-visit count until the next 60s poll
+  // tick, even though the notifications page itself just marked things
+  // read/deleted. Uses its own router (not pumpPage's shared one) because
+  // the /notifications stub needs a way to pop back.
+  testWidgets('refreshes the unread badge after returning from the notifications page', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.role = 'client';
+    var unread = 3;
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+      final path = (inv.positionalArguments[0] as Uri).path;
+      if (path == '/clients/10') {
+        return jsonResponse('{"client":{"id":10,"signed_at":"2026-01-01T00:00:00Z","workspace":{"id":5,"status":"active","contracts":[],"payments":[]}}}');
+      }
+      if (path == '/notifications') return jsonResponse('{"unread_count":"$unread"}');
+      if (path == '/badge-counts') return jsonResponse('{"contracts":"0","payments":"0","approvals":"0","files":"0","chat":"0"}');
+      if (path == '/workspaces/5/chat') return jsonResponse('{"messages":[]}');
+      if (path == '/workspaces/5/contracts') return jsonResponse('{"contracts":[]}');
+      if (path == '/workspaces/5/payments') return jsonResponse('{"payments":[],"available_methods":[],"tax_summary":null}');
+      if (path == '/workspaces/5/approvals') return jsonResponse('{"approvals":[]}');
+      if (path == '/workspaces/5/files') return jsonResponse('{"files":[],"definitions":[],"paymentFiles":[]}');
+      if (path == '/workspaces/5/meetings') return jsonResponse('{"meetings":[]}');
+      if (path == '/workspaces/5') return jsonResponse('{"workspace":{"status":"active"},"nextMeeting":null,"nextPayment":null}');
+      return jsonResponse('{}');
+    });
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (_, __) => ClientDashboardScreen(api: api, reverb: ReverbService.forTesting(), enableFcm: false, enablePolling: false)),
+        GoRoute(
+          path: '/notifications',
+          builder: (context, __) => Scaffold(body: TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('BACK'))),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(
+      routerConfig: router,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ));
+    await pumpBriefly(tester);
+    expect(find.text('3'), findsOneWidget);
+
+    // The notifications page marks everything read server-side while the
+    // user is on it — simulated here by changing what the next /notifications
+    // GET returns.
+    unread = 0;
+    await tester.tap(find.byIcon(Icons.notifications_outlined));
+    await pumpBriefly(tester);
+    expect(find.text('BACK'), findsOneWidget);
+
+    await tester.tap(find.text('BACK'));
+    await pumpBriefly(tester);
+
+    expect(find.text('3'), findsNothing);
+  });
+
+  // server-side-stats-plan.md, Stage 3 (M8) — the chat nav badge used to be
+  // computed by downloading the workspace's entire chat history and
+  // filtering it client-side (a second, redundant fetch alongside the one
+  // the always-mounted ChatPage tab already makes for its own message list).
+  // It must now come straight from /badge-counts' 'chat' field — the same
+  // count DashboardController::clientCounts() already computes server-side.
+  testWidgets('unread chat badge comes from /badge-counts', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.role = 'client';
+    stubCommon(httpClient, badgeCountsJson: '{"contracts":"0","payments":"0","approvals":"0","files":"0","chat":"5"}');
+
+    await pumpPage(tester, api);
+
+    expect(find.text('5'), findsOneWidget); // chat tab's badge count
+  });
+
   testWidgets('sub-user role loads its own permissions via /sub-users/:id', (tester) async {
     final httpClient = MockHttpClient();
     final api = buildTestApiClient(client: httpClient);
@@ -160,6 +241,67 @@ void main() {
     await pumpPage(tester, api);
 
     verify(() => httpClient.get(any(that: predicate<Uri>((u) => u.path == '/sub-users/1')), headers: any(named: 'headers'))).called(1);
+  });
+
+  // 19 Sept 2026 — regression coverage for the notification-tap permission
+  // bypass: a tapped push notification sets ClientDashboardScreen's
+  // initialTab directly (see notification_routing.dart's fcmTabIndex), and
+  // nothing checked whether the sub-user was actually allowed to see that
+  // tab before this fix. `initialTab: 3` (approvals, what an 'approval'
+  // notification maps to per fcmTabIndex) stands in for that notification
+  // tap below.
+  //
+  // Deliberately not index 0 (contracts): initState()'s
+  // `_hasInitialTabOverride` guard — which exists specifically to protect a
+  // notification-driven tab from being clobbered by _checkAutoAdvance()'s
+  // unrelated stage-advance logic — only arms on `initialTab > 0`, so index
+  // 0 would let stage-advance (this test's mocked workspace is "active",
+  // i.e. max stage) race the permission fix onto the same tab (chat, index
+  // 2) for an unrelated reason and produce a false pass either way.
+  testWidgets('a sub-user without can_view_approvals is redirected away from an approval notification tab', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.role = 'sub_user';
+    api.subUserId = 1;
+    stubCommon(httpClient, subUserJson: '{"sub_user":{"id":1,"permissions":{"can_chat":true}}}');
+
+    await pumpPage(tester, api, initialTab: 3);
+
+    // Chat (index 2) is the only tab this sub-user's permissions allow —
+    // the fix must land them there instead of leaving them on approvals.
+    final stack = tester.widget<IndexedStack>(find.byType(IndexedStack));
+    expect(stack.index, 2);
+  });
+
+  testWidgets('a sub-user with the matching permission keeps the notification tab', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.role = 'sub_user';
+    api.subUserId = 1;
+    stubCommon(httpClient, subUserJson: '{"sub_user":{"id":1,"permissions":{"can_view_approvals":true}}}');
+
+    await pumpPage(tester, api, initialTab: 3);
+
+    final stack = tester.widget<IndexedStack>(find.byType(IndexedStack));
+    expect(stack.index, 3);
+  });
+
+  testWidgets('a sub-user with zero permissions granted falls back to the contracts tab', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.role = 'sub_user';
+    api.subUserId = 1;
+    stubCommon(httpClient, subUserJson: '{"sub_user":{"id":1,"permissions":{}}}');
+
+    // 3 (approvals) stands in for any notification-driven tab a brand-new,
+    // not-yet-granted-anything sub-user has no business landing on.
+    await pumpPage(tester, api, initialTab: 3);
+
+    final stack = tester.widget<IndexedStack>(find.byType(IndexedStack));
+    expect(stack.index, 0);
   });
 
   testWidgets('logout confirmation clears the token and navigates to /login', (tester) async {
@@ -197,7 +339,7 @@ void main() {
     // SignatureTab's), same as the first test in this file.
     verify(() => httpClient.get(any(that: predicate<Uri>((u) => u.path == '/clients/10')), headers: any(named: 'headers'))).called(2);
 
-    reverb.onWorkspaceStatusChanged?.call({'status': 'active'});
+    reverb.debugDispatch('workspace.status_changed', jsonEncode({'status': 'active'}));
     await pumpBriefly(tester);
 
     // Confirmed empirically in chat_page_test.dart: mocktail's verify()
@@ -216,9 +358,44 @@ void main() {
     final reverb = await pumpPage(tester, api);
     verify(() => httpClient.get(any(that: predicate<Uri>((u) => u.path == '/clients/10')), headers: any(named: 'headers'))).called(2);
 
-    reverb.onPaymentStatusChanged?.call({'status': 'approved'});
+    reverb.debugDispatch('payment.status_changed', jsonEncode({'status': 'approved'}));
     await pumpBriefly(tester);
 
     verify(() => httpClient.get(any(that: predicate<Uri>((u) => u.path == '/clients/10')), headers: any(named: 'headers'))).called(1);
+  });
+
+  testWidgets('joins workspace channel on load and leaves it on dispose', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.role = 'client';
+    stubCommon(httpClient);
+
+    final reverb = await pumpPage(tester, api);
+    expect(reverb.debugChannels, contains('App.Models.Client.10'));
+    expect(reverb.debugChannels, contains('workspace.5'));
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    await tester.pumpAndSettle();
+
+    expect(reverb.debugChannels, isNot(contains('workspace.5')));
+  });
+
+  testWidgets('shows toast from top-level message in broadcast notification payload', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.role = 'client';
+    stubCommon(httpClient);
+
+    final reverb = await pumpPage(tester, api);
+
+    reverb.debugDispatch(
+      'Illuminate\\Notifications\\Events\\BroadcastNotificationCreated',
+      jsonEncode({'message': 'New meeting scheduled', 'type': 'meeting.created'}),
+    );
+    await tester.pump();
+
+    expect(find.text('New meeting scheduled'), findsOneWidget);
   });
 }

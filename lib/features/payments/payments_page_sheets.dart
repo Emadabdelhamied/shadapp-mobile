@@ -20,12 +20,11 @@
 // chat_shared.dart (see docs/state-layer-migration-plan.md, بند ٥).
 import 'dart:io' show File;
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
 import '../../core/api_client.dart';
+import '../../core/app_log.dart';
+import '../../core/helpers/proof_image_picker.dart';
 import '../../core/theme.dart';
 import '../../providers/payment_provider.dart';
 
@@ -51,25 +50,37 @@ void showRequestPaymentSheet({
   };
 
   final contractCur = getContractCurrency?.call() ?? 'SAR';
-  final currencies = [contractCur];
-  final currencyLabels = <String, String>{
-    'SAR': l10n.currency_sar, 'USD': l10n.currency_usd, 'EUR': l10n.currency_eur,
-    'AED': l10n.currency_aed, 'EGP': l10n.currency_egp, 'KWD': l10n.currency_kwd,
-    'QAR': l10n.currency_qar, 'BHD': l10n.currency_bhd, 'OMR': l10n.currency_omr,
-  };
+  // The payment's currency is always the linked contract's — enforced
+  // server-side by PaymentController::resolveCurrency() regardless of what
+  // gets submitted (plans/payment-currency-plan.md). This used to be a free
+  // dropdown locked to a single [contractCur] item that never updated when
+  // the contract picker below was switched (م5) — currencyFor() now derives
+  // the right value from whichever contract is actually selected, so the
+  // display and the submitted currency both follow it.
+  final payableContracts = getPayableContracts();
+  String currencyFor(int? contractId) {
+    if (contractId != null) {
+      final match = payableContracts.firstWhere((c) => c['id'] == contractId, orElse: () => <String, dynamic>{});
+      final cur = match['currency'] as String?;
+      if (cur != null) return cur;
+    }
+    return contractCur;
+  }
 
   final available = getAvailableMethods().isNotEmpty ? getAvailableMethods() : methodLabels.keys.toList();
   final amountCtrl = TextEditingController();
   final selectedMethod = ValueNotifier<String>(available.first);
-  final selectedCurrency = ValueNotifier<String>(contractCur);
   // Only let the user pick a contract when there is more than one payable
   // contract; 0/1 keeps the legacy auto-link behaviour byte-identical and the
   // payload stays contract_id-free so the backend falls back to the latest
   // contract. The id is only read off this notifier after an explicit pick.
-  final payableContracts = getPayableContracts();
   final selectedContract = ValueNotifier<int?>(null);
   List<Map<String, dynamic>> proofFiles = [];
   final uploadingNotifier = ValueNotifier<bool>(false);
+  // Shown as a red line inside the sheet on failure — never a SnackBar, since
+  // a SnackBar renders behind this still-open sheet and goes unnoticed.
+  // payment-proof-upload-plan.md, Stage 4 (ح1).
+  final errorNotifier = ValueNotifier<String?>(null);
 
   // Auto-suggest grand total
   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -92,26 +103,20 @@ void showRequestPaymentSheet({
             IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
           ]),
           const SizedBox(height: 16),
-          ValueListenableBuilder<String>(
-            valueListenable: selectedCurrency,
-            builder: (_, cur, __) => TextField(
+          ValueListenableBuilder<int?>(
+            valueListenable: selectedContract,
+            builder: (_, contractId, __) => TextField(
               controller: amountCtrl,
-              decoration: InputDecoration(labelText: '${AppLocalizations.of(pageContext)!.payments_amount} *', hintText: '0.00', prefixText: '$cur '),
+              decoration: InputDecoration(labelText: '${AppLocalizations.of(pageContext)!.payments_amount} *', hintText: '0.00', prefixText: '${currencyFor(contractId)} '),
               keyboardType: TextInputType.number,
             ),
           ),
           const SizedBox(height: 12),
-          ValueListenableBuilder<String>(
-            valueListenable: selectedCurrency,
-            builder: (_, cur, __) => DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: cur,
+          ValueListenableBuilder<int?>(
+            valueListenable: selectedContract,
+            builder: (_, contractId, __) => InputDecorator(
               decoration: InputDecoration(labelText: AppLocalizations.of(pageContext)!.payments_currency),
-              items: currencies.map((c) => DropdownMenuItem(
-                value: c,
-                child: Text('$c — ${currencyLabels[c] ?? ''}'),
-              )).toList(),
-              onChanged: (v) { if (v != null) selectedCurrency.value = v; },
+              child: Text(currencyFor(contractId), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.gold)),
             ),
           ),
           const SizedBox(height: 12),
@@ -207,16 +212,9 @@ void showRequestPaymentSheet({
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () async {
-                  final r = await FilePicker.platform.pickFiles(type: FileType.image, withData: kIsWeb);
-                  if (r != null && r.files.isNotEmpty) {
-                    setSheetState(() {
-                      final f = r.files.first;
-                      if (kIsWeb) {
-                        proofFiles.add({'bytes': f.bytes, 'name': f.name});
-                      } else {
-                        proofFiles.add({'file': File(f.path!), 'name': f.name});
-                      }
-                    });
+                  final picked = await pickProofFromGallery();
+                  if (picked.isNotEmpty) {
+                    setSheetState(() { proofFiles.addAll(picked); });
                   }
                 },
                 icon: const Icon(Icons.upload_file, size: 18),
@@ -226,23 +224,24 @@ void showRequestPaymentSheet({
             const SizedBox(width: 8),
             OutlinedButton(
               onPressed: () async {
-                final r = await ImagePicker().pickImage(source: ImageSource.camera);
-                if (r != null) {
-                  setSheetState(() {
-                    if (kIsWeb) {
-                      r.readAsBytes().then((bytes) {
-                        setSheetState(() { proofFiles.add({'bytes': bytes, 'name': r.name}); });
-                      });
-                    } else {
-                      proofFiles.add({'file': File(r.path), 'name': r.name});
-                    }
-                  });
+                final picked = await pickProofFromCamera();
+                if (picked != null) {
+                  setSheetState(() { proofFiles.add(picked); });
                 }
               },
               style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
               child: const Icon(Icons.camera_alt, size: 18),
             ),
           ]),
+          ValueListenableBuilder<String?>(
+            valueListenable: errorNotifier,
+            builder: (_, err, __) => err == null
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(err, style: const TextStyle(color: ShadColors.error, fontSize: 13)),
+                  ),
+          ),
           const SizedBox(height: 20),
           ValueListenableBuilder<bool>(
             valueListenable: uploadingNotifier,
@@ -250,8 +249,8 @@ void showRequestPaymentSheet({
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: uploading ? null : () => _submitPaymentDashboard(
-                  ctx, setSheetState, uploadingNotifier,
-                  amountCtrl, selectedCurrency.value, selectedMethod.value, selectedContract.value, proofFiles,
+                  ctx, setSheetState, uploadingNotifier, errorNotifier,
+                  amountCtrl, currencyFor(selectedContract.value), selectedMethod.value, selectedContract.value, proofFiles,
                   paymentProvider, api, load,
                 ),
                 child: uploading
@@ -270,6 +269,7 @@ Future<void> _submitPaymentDashboard(
   BuildContext ctx,
   void Function(void Function()) setSheetState,
   ValueNotifier<bool> uploadingNotifier,
+  ValueNotifier<String?> errorNotifier,
   TextEditingController amountCtrl,
   String currency,
   String methodType,
@@ -279,14 +279,22 @@ Future<void> _submitPaymentDashboard(
   ApiClient api,
   Future<void> Function() load,
 ) async {
+  // Captured once, before any `await`: looking it up again inside the catch
+  // blocks below (after the request has actually gone out) is exactly the
+  // `use_build_context_synchronously` pattern flutter analyze flags, since it
+  // can't tell a caught exception means ctx is still safe to read from.
+  final l10n = AppLocalizations.of(ctx)!;
+  errorNotifier.value = null;
   final amount = double.tryParse(amountCtrl.text);
   if (amount == null || amount <= 0) {
-    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(AppLocalizations.of(ctx)!.payments_enterValidAmount)));
+    errorNotifier.value = l10n.payments_enterValidAmount;
+    if (ctx.mounted) setSheetState(() {});
     return;
   }
   final wsId = api.workspaceId;
   if (wsId == null) {
-    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(AppLocalizations.of(ctx)!.payments_workspaceUnavailable)));
+    errorNotifier.value = l10n.payments_workspaceUnavailable;
+    if (ctx.mounted) setSheetState(() {});
     return;
   }
   uploadingNotifier.value = true;
@@ -312,13 +320,22 @@ Future<void> _submitPaymentDashboard(
     );
 
     if (ctx.mounted) {
-      final l10n = AppLocalizations.of(ctx)!;
-      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(l10n.payments_requestSent))])));
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Text(l10n.payments_requestSent)])));
       Navigator.pop(ctx);
     }
     await load();
-  } catch (_) {
-    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(AppLocalizations.of(ctx)!.payments_sendFailed)));
+  } on ValidationException catch (e) {
+    AppLog.error('payments_page_sheets._submitPaymentDashboard', e);
+    errorNotifier.value = e.message;
+  } on ConnectionException catch (e) {
+    AppLog.error('payments_page_sheets._submitPaymentDashboard', e);
+    errorNotifier.value = l10n.connectionFailedMessage;
+  } on ServerException catch (e) {
+    AppLog.error('payments_page_sheets._submitPaymentDashboard', e);
+    errorNotifier.value = e.message.isNotEmpty ? e.message : l10n.serverErrorMessage;
+  } catch (e, s) {
+    AppLog.error('payments_page_sheets._submitPaymentDashboard', e, s);
+    errorNotifier.value = l10n.payments_sendFailed;
   }
   uploadingNotifier.value = false;
   if (ctx.mounted) setSheetState(() {});
@@ -347,6 +364,7 @@ void showScheduledPaymentSheet({
   final selectedMethod = ValueNotifier<String>(available.first);
   List<Map<String, dynamic>> proofFiles = [];
   final uploadingNotifier = ValueNotifier<bool>(false);
+  final errorNotifier = ValueNotifier<String?>(null);
   final paymentId = p['id'];
   final amount = p['amount']?.toString() ?? '0';
   final currency = p['currency']?.toString() ?? 'SAR';
@@ -423,16 +441,9 @@ void showScheduledPaymentSheet({
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () async {
-                  final r = await FilePicker.platform.pickFiles(type: FileType.image, withData: kIsWeb);
-                  if (r != null && r.files.isNotEmpty) {
-                    setSheetState(() {
-                      final f = r.files.first;
-                      if (kIsWeb) {
-                        proofFiles.add({'bytes': f.bytes, 'name': f.name});
-                      } else {
-                        proofFiles.add({'file': File(f.path!), 'name': f.name});
-                      }
-                    });
+                  final picked = await pickProofFromGallery();
+                  if (picked.isNotEmpty) {
+                    setSheetState(() { proofFiles.addAll(picked); });
                   }
                 },
                 icon: const Icon(Icons.upload_file, size: 18),
@@ -442,21 +453,24 @@ void showScheduledPaymentSheet({
             const SizedBox(width: 8),
             OutlinedButton(
               onPressed: () async {
-                final r = await ImagePicker().pickImage(source: ImageSource.camera);
-                if (r != null) {
-                  setSheetState(() {
-                    if (kIsWeb) {
-                      r.readAsBytes().then((bytes) => setSheetState(() => proofFiles.add({'bytes': bytes, 'name': r.name})));
-                    } else {
-                      proofFiles.add({'file': File(r.path), 'name': r.name});
-                    }
-                  });
+                final picked = await pickProofFromCamera();
+                if (picked != null) {
+                  setSheetState(() { proofFiles.add(picked); });
                 }
               },
               style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
               child: const Icon(Icons.camera_alt, size: 18),
             ),
           ]),
+          ValueListenableBuilder<String?>(
+            valueListenable: errorNotifier,
+            builder: (_, err, __) => err == null
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(err, style: const TextStyle(color: ShadColors.error, fontSize: 13)),
+                  ),
+          ),
           const SizedBox(height: 16),
           ValueListenableBuilder<bool>(
             valueListenable: uploadingNotifier,
@@ -464,7 +478,7 @@ void showScheduledPaymentSheet({
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: uploading ? null : () => _submitScheduledPaymentProof(
-                  ctx, setSheetState, uploadingNotifier, paymentId, selectedMethod.value, proofFiles,
+                  ctx, setSheetState, uploadingNotifier, errorNotifier, paymentId, selectedMethod.value, proofFiles,
                   paymentProvider, api, load,
                 ),
                 child: uploading
@@ -483,6 +497,7 @@ Future<void> _submitScheduledPaymentProof(
   BuildContext ctx,
   void Function(void Function()) setSheetState,
   ValueNotifier<bool> uploadingNotifier,
+  ValueNotifier<String?> errorNotifier,
   dynamic paymentId,
   String methodType,
   List<Map<String, dynamic>> proofFiles,
@@ -491,13 +506,16 @@ Future<void> _submitScheduledPaymentProof(
   Future<void> Function() load,
 ) async {
   final l10n = AppLocalizations.of(ctx)!;
+  errorNotifier.value = null;
   if (proofFiles.isEmpty) {
-    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l10n.payments_requireProof)));
+    errorNotifier.value = l10n.payments_requireProof;
+    if (ctx.mounted) setSheetState(() {});
     return;
   }
   final wsId = api.workspaceId;
   if (wsId == null) {
-    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l10n.payments_workspaceUnavailableMsg)));
+    errorNotifier.value = l10n.payments_workspaceUnavailableMsg;
+    if (ctx.mounted) setSheetState(() {});
     return;
   }
   uploadingNotifier.value = true;
@@ -521,8 +539,18 @@ Future<void> _submitScheduledPaymentProof(
       Navigator.pop(ctx);
     }
     await load();
-  } catch (_) {
-    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l10n.payments_proofSendFailed)));
+  } on ValidationException catch (e) {
+    AppLog.error('payments_page_sheets._submitScheduledPaymentProof', e);
+    errorNotifier.value = e.message;
+  } on ConnectionException catch (e) {
+    AppLog.error('payments_page_sheets._submitScheduledPaymentProof', e);
+    errorNotifier.value = l10n.connectionFailedMessage;
+  } on ServerException catch (e) {
+    AppLog.error('payments_page_sheets._submitScheduledPaymentProof', e);
+    errorNotifier.value = e.message.isNotEmpty ? e.message : l10n.serverErrorMessage;
+  } catch (e, s) {
+    AppLog.error('payments_page_sheets._submitScheduledPaymentProof', e, s);
+    errorNotifier.value = l10n.payments_proofSendFailed;
   }
   uploadingNotifier.value = false;
   if (ctx.mounted) setSheetState(() {});

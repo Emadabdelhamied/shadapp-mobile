@@ -1,0 +1,41 @@
+import '../core/api_client.dart';
+
+/// Wraps `GET /dashboard/stats` (server-side-stats-plan.md) — the
+/// server-computed dashboard summary cards (client/contract/payment/approval
+/// counts, this month's approved-payment revenue by currency), scoped to
+/// what the signed-in user is allowed to see, the same as `/reports`. Kept
+/// separate from [DashboardRepository] (which wraps the unrelated
+/// `/badge-counts`) to mirror the web dashboard's own separate
+/// `useDashboardStats` hook — this is a distinct concern from the
+/// nav-badge unread counts even though both live under "dashboard".
+class DashboardStatsRepository {
+  final ApiClient _api;
+  DashboardStatsRepository({ApiClient? api}) : _api = api ?? ApiClient();
+
+  /// Raw response, not a model — same reasoning as
+  /// [DashboardRepository.fetchBadgeCounts]: a small, stable, nested bag of
+  /// counts/sums with no behavior worth wrapping in a class. See the web's
+  /// `DashboardStats` type (src/types/index.ts) for the exact shape:
+  /// clients.total, contracts.active/awaiting_client, payments.pending,
+  /// approvals.pending_requests/pending_contracts/pending_payments/total,
+  /// revenue_this_month (a currency-code-to-amount map, e.g.
+  /// `{"SAR": 12500, "USD": 3000}`), and period.month/timezone.
+  Future<Map<String, dynamic>> fetchStats() => _api.get('/dashboard/stats');
+
+  /// GET /dashboard/pending-approvals (pending-approvals-plan.md ك5) — the
+  /// single-request replacement for sa_approvals_page.dart's old per-client
+  /// loop (fetch every client's workspace, then that workspace's contracts,
+  /// one request each). [limit] is passed as the `limit` query param, capped
+  /// server-side at 200; 200 is used as the default here (rather than the
+  /// endpoint's own default of 50) specifically to avoid re-introducing an
+  /// implicit low item cap on a screen that previously had none.
+  ///
+  /// Raw response, not a model, same reasoning as [fetchStats]. Shape:
+  /// `awaiting_you: {contracts: [...], payments: [...]}`,
+  /// `awaiting_client: {contracts: [...], approvals: [...]}`, each item
+  /// carrying `id, type, title|amount, value, currency, status,
+  /// workspace_id, client: {id, uuid, company_name, client_type}`, plus an
+  /// uncapped `counts` bag — see DashboardController::pendingApprovals().
+  Future<Map<String, dynamic>> fetchPendingApprovals({int limit = 200}) =>
+      _api.get('/dashboard/pending-approvals?limit=$limit');
+}

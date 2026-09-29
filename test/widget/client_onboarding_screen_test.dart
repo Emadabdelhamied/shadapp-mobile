@@ -17,6 +17,9 @@
 // `flutter test`, same reasoning documented throughout this migration (see
 // contracts_page_test.dart). Only the no-files plain-POST payment branch is
 // exercised here.
+import 'dart:async';
+import 'dart:convert';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -56,11 +59,22 @@ void main() {
         .thenAnswer((_) async => jsonResponse('{}'));
   }
 
-  Future<void> pumpScreen(WidgetTester tester, dynamic api) async {
+  Future<void> pumpScreen(
+    WidgetTester tester,
+    dynamic api, {
+    ReverbService? reverb,
+    bool enableFcm = false,
+    Stream<RemoteMessage>? foregroundMessages,
+  }) async {
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: ClientOnboardingScreen(api: api, reverb: ReverbService.forTesting(), enableFcm: false),
+      home: ClientOnboardingScreen(
+        api: api,
+        reverb: reverb ?? ReverbService.forTesting(),
+        enableFcm: enableFcm,
+        foregroundMessages: foregroundMessages,
+      ),
     ));
     await tester.pumpAndSettle();
   }
@@ -110,6 +124,50 @@ void main() {
         )).called(1);
   });
 
+  // client-signature-plan.md ن3 — _computeStage() now keeps a client with no
+  // saved signature on the signature stage even once a contract is sitting
+  // at 'sent', instead of jumping them straight to the approve screen (which
+  // used to offer an Approve button the backend would then reject, per ك3,
+  // with no explanation of why).
+  testWidgets('a sent contract with no saved signature shows the signature stage instead of Approve', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    stubGets(httpClient, clientJson: '{"client":{"id":10,"contact_person":"Ali","signed_at":null,"client_type":"individual",'
+        '"workspace":{"id":5,"status":"pending","contracts":[{"id":7,"status":"sent"}],"payments":[]}}}');
+
+    await pumpScreen(tester, api);
+
+    expect(find.text('Sign Now'), findsOneWidget);
+    expect(find.text('Approve'), findsNothing);
+  });
+
+  // Fallback path for the same ن3 bug: if the backend still rejects an
+  // 'approved' action for missing signature (e.g. a client whose signed_at
+  // is stale or desynced from the server's own signature_data check), the
+  // reactive maybeShowSignatureRequiredDialog wiring in
+  // _respondToContractById's catch block should surface it instead of a
+  // generic failure message.
+  testWidgets('a backend signature_required rejection on approve shows the signature-required dialog', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    stubGets(httpClient, clientJson: '{"client":{"id":10,"contact_person":"Ali","signed_at":"2026-01-01T00:00:00Z","client_type":"individual",'
+        '"workspace":{"id":5,"status":"active","contracts":[{"id":7,"status":"sent"}],"payments":[]}}}');
+    when(() => httpClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body'))).thenAnswer(
+      (_) async => jsonResponse('{"message":"لازم تحفظ توقيعك الأول قبل ما توافق.","code":"signature_required"}', 422),
+    );
+
+    await pumpScreen(tester, api);
+
+    expect(find.text('Approve'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Approve'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Signature Required'), findsOneWidget);
+    expect(find.text('Sign Now'), findsOneWidget);
+  });
+
   testWidgets('sending a payment with no attached proof posts to /workspaces/:id/payments', (tester) async {
     final httpClient = MockHttpClient();
     final api = buildTestApiClient(client: httpClient);
@@ -133,5 +191,201 @@ void main() {
           headers: any(named: 'headers'),
           body: any(named: 'body'),
         )).called(1);
+  });
+
+  // plans/payment-currency-plan.md ح4: the onboarding payment sheet used to
+  // show a free 9-currency dropdown defaulting to SAR, ignoring the
+  // client's actual contract. It's now a fixed value threaded through from
+  // buildPaymentStage, displayed read-only — the backend enforces this
+  // regardless via PaymentController::resolveCurrency().
+  testWidgets('sending a payment for an EGP contract posts currency EGP without offering a free choice', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    stubGets(httpClient, clientJson: '{"client":{"id":10,"contact_person":"Ali","signed_at":"2026-01-01T00:00:00Z","client_type":"individual",'
+        '"workspace":{"id":5,"status":"active","contracts":[{"id":7,"status":"company_approved","value":"1000","currency":"EGP"}],"payments":[]}}}');
+    Map<String, dynamic>? sentBody;
+    when(() => httpClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body'))).thenAnswer((inv) async {
+      sentBody = jsonDecode(inv.namedArguments[#body] as String) as Map<String, dynamic>;
+      return jsonResponse('{}');
+    });
+
+    await pumpScreen(tester, api);
+
+    final ctaButton = find.widgetWithText(ElevatedButton, 'Send Payment');
+    await scrollTo(tester, ctaButton);
+    await tester.tap(ctaButton);
+    await tester.pumpAndSettle();
+
+    // Only the payment-method dropdown (bank_transfer/swift/...) remains —
+    // also a DropdownButtonFormField<String>, so we assert exactly one
+    // rather than none, and confirm the currency itself is shown as
+    // read-only text instead of a second dropdown.
+    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+    expect(find.text('EGP'), findsWidgets);
+
+    final submitButton = find.widgetWithText(ElevatedButton, 'Send Payment').last;
+    await scrollTo(tester, submitButton);
+    await tester.tap(submitButton);
+    await tester.pumpAndSettle();
+
+    expect(sentBody?['currency'], 'EGP');
+  });
+
+  // payment-proof-upload-plan.md, Stage 4 (ح1) — same fix as
+  // payments_page_test.dart's equivalent test, applied to onboarding's own
+  // payment sheet.
+  testWidgets('sending a payment that the server rejects shows its message inside the sheet and keeps it open', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    stubGets(httpClient, clientJson: '{"client":{"id":10,"contact_person":"Ali","signed_at":"2026-01-01T00:00:00Z","client_type":"individual",'
+        '"workspace":{"id":5,"status":"active","contracts":[{"id":7,"status":"company_approved","value":"1000","currency":"SAR"}],"payments":[]}}}');
+    when(() => httpClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body'))).thenAnswer(
+      (_) async => jsonResponse(
+        '{"message":"The given data was invalid.","errors":{"amount":["Amount exceeds the remaining contract value"]}}',
+        422,
+      ),
+    );
+
+    await pumpScreen(tester, api);
+
+    final ctaButton = find.widgetWithText(ElevatedButton, 'Send Payment');
+    await scrollTo(tester, ctaButton);
+    await tester.tap(ctaButton);
+    await tester.pumpAndSettle();
+    final submitButton = find.widgetWithText(ElevatedButton, 'Send Payment').last;
+    await scrollTo(tester, submitButton);
+    await tester.tap(submitButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Amount exceeds the remaining contract value'), findsOneWidget);
+    // The sheet is still open (not popped): both the page's own "Send
+    // Payment" CTA behind it and the sheet's submit button (same label) are
+    // still on screen. If the sheet had been popped, only the CTA would
+    // remain.
+    expect(find.widgetWithText(ElevatedButton, 'Send Payment'), findsNWidgets(2));
+  });
+
+  group('realtime toasts and channel management', () {
+    testWidgets('joins client and workspace channels when workspace id is known', (tester) async {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.userId = 10;
+      stubGets(httpClient, clientJson: '{"client":{"id":10,"contact_person":"Ali","signed_at":null,"client_type":"individual",'
+          '"workspace":{"id":5,"status":"pending","contracts":[],"payments":[]}}}');
+      final reverb = ReverbService.forTesting();
+
+      await pumpScreen(tester, api, reverb: reverb);
+
+      expect(reverb.debugChannels, contains('App.Models.Client.10'));
+      expect(reverb.debugChannels, contains('workspace.5'));
+    });
+
+    testWidgets('Reverb broadcast notification shows SnackBar and reloads client data', (tester) async {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.userId = 10;
+      stubGets(httpClient, clientJson: '{"client":{"id":10,"contact_person":"Ali","signed_at":null,"client_type":"individual",'
+          '"workspace":{"id":5,"status":"pending","contracts":[],"payments":[]}}}');
+      final reverb = ReverbService.forTesting();
+
+      await pumpScreen(tester, api, reverb: reverb);
+
+      reverb.debugDispatch(
+        'Illuminate\\Notifications\\Events\\BroadcastNotificationCreated',
+        jsonEncode({'message': 'Contract updated', 'type': 'contract.updated', 'contract_id': 7}),
+      );
+      await tester.pump();
+
+      expect(find.text('Contract updated'), findsOneWidget);
+    });
+
+    testWidgets('Reverb broadcast followed by matching FCM payload within 5s deduplicates toast', (tester) async {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.userId = 10;
+      stubGets(httpClient, clientJson: '{"client":{"id":10,"contact_person":"Ali","signed_at":null,"client_type":"individual",'
+          '"workspace":{"id":5,"status":"pending","contracts":[],"payments":[]}}}');
+      final reverb = ReverbService.forTesting();
+      final fcmController = StreamController<RemoteMessage>.broadcast();
+      addTearDown(() => fcmController.close());
+
+      await pumpScreen(tester, api, reverb: reverb, foregroundMessages: fcmController.stream);
+
+      // Reverb arrives first
+      reverb.debugDispatch(
+        'Illuminate\\Notifications\\Events\\BroadcastNotificationCreated',
+        jsonEncode({'message': 'Contract approved', 'type': 'contract.approved', 'contract_id': 7}),
+      );
+      await tester.pump();
+      expect(find.text('Contract approved'), findsOneWidget);
+
+      // FCM arrives 500ms later for the exact same contract
+      fcmController.add(const RemoteMessage(
+        data: {'type': 'contract.approved', 'id': '7', 'message': 'Contract approved'},
+      ));
+      await tester.pump();
+
+      // Only one SnackBar is shown on screen
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+
+    testWidgets('foreground FCM alone displays SnackBar and reloads client data', (tester) async {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.userId = 10;
+      stubGets(httpClient, clientJson: '{"client":{"id":10,"contact_person":"Ali","signed_at":null,"client_type":"individual",'
+          '"workspace":{"id":5,"status":"pending","contracts":[],"payments":[]}}}');
+      final fcmController = StreamController<RemoteMessage>.broadcast();
+      addTearDown(() => fcmController.close());
+
+      await pumpScreen(tester, api, foregroundMessages: fcmController.stream);
+
+      fcmController.add(const RemoteMessage(
+        data: {'type': 'payment.approved', 'id': '12', 'message': 'Payment approved'},
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Payment approved'), findsOneWidget);
+    });
+
+    testWidgets('unrelated FCM notification type is ignored without showing toast', (tester) async {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.userId = 10;
+      stubGets(httpClient, clientJson: '{"client":{"id":10,"contact_person":"Ali","signed_at":null,"client_type":"individual",'
+          '"workspace":{"id":5,"status":"pending","contracts":[],"payments":[]}}}');
+      final fcmController = StreamController<RemoteMessage>.broadcast();
+      addTearDown(() => fcmController.close());
+
+      await pumpScreen(tester, api, foregroundMessages: fcmController.stream);
+
+      fcmController.add(const RemoteMessage(
+        data: {'type': 'system.ping', 'id': '99', 'message': 'System ping'},
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('System ping'), findsNothing);
+    });
+
+    testWidgets('disposing screen leaves workspace channel', (tester) async {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.userId = 10;
+      stubGets(httpClient, clientJson: '{"client":{"id":10,"contact_person":"Ali","signed_at":null,"client_type":"individual",'
+          '"workspace":{"id":5,"status":"pending","contracts":[],"payments":[]}}}');
+      final reverb = ReverbService.forTesting();
+
+      await pumpScreen(tester, api, reverb: reverb);
+      expect(reverb.debugChannels, contains('workspace.5'));
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      await tester.pumpAndSettle();
+
+      expect(reverb.debugChannels, isNot(contains('workspace.5')));
+    });
   });
 }

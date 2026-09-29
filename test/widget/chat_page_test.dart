@@ -144,7 +144,7 @@ void main() {
       headers: any(named: 'headers'),
     )).called(1);
 
-    reverb.onContractStatusChanged?.call();
+    reverb.debugDispatch('contract.status_changed', null);
     await tester.pumpAndSettle();
 
     // Confirmed empirically: mocktail's verify() consumes the interactions
@@ -275,6 +275,29 @@ void main() {
     expect(sentBody, {'action': 'approved'});
   });
 
+  // client-signature-plan.md ن3/ك5 — a 422 signature_required rejection from
+  // POST /contracts/:id/client-action (ك3) should surface the shared
+  // signature-required dialog instead of a silent failure.
+  testWidgets('approving a contract card the backend rejects for missing signature shows the signature-required dialog', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.workspaceId = 5;
+    final contractMsg = msg(3, senderType: 'App\\Models\\Client', senderId: 10, senderName: 'Ali Client',
+        contract: {'id': 7, 'status': 'sent', 'title': 'Service Agreement', 'clauses': []});
+    stubDefaultGets(httpClient, messages: [contractMsg]);
+    when(() => httpClient.post(any(that: predicate<Uri>((u) => u.path.endsWith('/contracts/7/client-action'))),
+        headers: any(named: 'headers'), body: any(named: 'body'))).thenAnswer((_) async =>
+        jsonResponse('{"message":"لازم تحفظ توقيعك الأول قبل ما توافق على العقد.","code":"signature_required"}', 422));
+
+    await pumpPage(tester, api);
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Approve'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Signature Required'), findsOneWidget);
+    expect(find.text('Sign Now'), findsOneWidget);
+  });
+
   testWidgets('approving a pending message posts action=approved to /chat/:id/respond', (tester) async {
     final httpClient = MockHttpClient();
     final api = buildTestApiClient(client: httpClient);
@@ -295,6 +318,28 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(sentBody, {'action': 'approved'});
+  });
+
+  // Same ن3/ك5 rejection, but through ChatController::respond() (ك4) via the
+  // pending-message approve path rather than the contract-card approve path.
+  testWidgets('approving a pending message the backend rejects for missing signature shows the signature-required dialog', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.workspaceId = 5;
+    final pendingMsg = msg(4, senderType: 'App\\Models\\User', senderId: 99, senderName: 'AM Manager',
+        message: 'Please approve this', requiresAction: true);
+    stubDefaultGets(httpClient, messages: [pendingMsg]);
+    when(() => httpClient.post(any(that: predicate<Uri>((u) => u.path.endsWith('/chat/4/respond'))),
+        headers: any(named: 'headers'), body: any(named: 'body'))).thenAnswer((_) async =>
+        jsonResponse('{"message":"لازم تحفظ توقيعك الأول قبل ما توافق.","code":"signature_required"}', 422));
+
+    await pumpPage(tester, api);
+    await tester.tap(find.text('Approve'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Signature Required'), findsOneWidget);
+    expect(find.text('Sign Now'), findsOneWidget);
   });
 
   testWidgets('requesting an edit on a pending message posts action + reason and shows the toast', (tester) async {
@@ -374,5 +419,69 @@ void main() {
     verify(() => httpClient.get(any(that: predicate<Uri>((u) => u.path.endsWith('/workspaces/5/meetings'))),
         headers: any(named: 'headers'))).called(1);
     expect(find.text('No active meeting'), findsOneWidget);
+  });
+
+  // plans/notifications-badges-toasts-plan.md ن15 — this screen used to call
+  // reverb.connectForClient(cid) on dispose to *restore* the client's own
+  // notifications channel, because opening chat had taken the connection's
+  // one and only channel over. Now that connect(wsId) is additive, the
+  // client channel (joined by whichever dashboard screen opened this chat)
+  // is never dropped in the first place — this screen only needs to leave
+  // the one channel it joined itself when it disposes.
+  testWidgets('leaves its own workspace channel on dispose without touching the clients notification channel', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.workspaceId = 5;
+    stubDefaultGets(httpClient);
+    final reverb = ReverbService.forTesting();
+    // Simulates client_dashboard_screen.dart already having joined its own
+    // notifications channel before this chat tab (kept alive in the same
+    // IndexedStack) ever ran its own initState.
+    await reverb.connectForClient(10);
+
+    await pumpPage(tester, api, reverb: reverb);
+    expect(reverb.debugChannels, containsAll(<String>['App.Models.Client.10', 'workspace.5']));
+
+    // Simulates navigating away from this screen.
+    await tester.pumpWidget(const SizedBox());
+
+    expect(reverb.debugChannels, contains('App.Models.Client.10'));
+    expect(reverb.debugChannels, isNot(contains('workspace.5')));
+  });
+
+  testWidgets('client tapping a meeting message card does not call enter endpoint', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.userId = 10;
+    api.workspaceId = 5;
+    final nowIso = DateTime.now().toUtc().add(const Duration(minutes: -2)).toIso8601String();
+    final meetingMsg = {
+      'id': 102,
+      'message': 'Meeting scheduled',
+      'sender_type': 'App\\Models\\User',
+      'sender_id': 99,
+      'type': 'meeting',
+      'metadata': {
+        'meeting_id': 77,
+        'title': 'Sprint Review',
+        'link': 'https://zoom.us/j/777',
+        'scheduled_at': nowIso,
+        'duration_minutes': 30,
+        'status': 'scheduled',
+      },
+      'created_at': nowIso,
+    };
+    stubDefaultGets(httpClient, messages: [meetingMsg]);
+
+    await pumpPage(tester, api);
+    expect(find.text('Sprint Review'), findsOneWidget);
+    expect(find.text('Join Now'), findsOneWidget);
+
+    await tester.tap(find.text('Join Now'));
+    await tester.pump();
+
+    verifyNever(() => httpClient.post(any(that: predicate<Uri>((u) => u.path.endsWith('/enter'))),
+        headers: any(named: 'headers'), body: any(named: 'body')));
   });
 }

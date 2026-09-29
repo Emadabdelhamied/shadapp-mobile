@@ -85,4 +85,127 @@ void main() {
     expect(reportQueries.last.queryParameters.containsKey('date_from'), true);
     expect(reportQueries.last.queryParameters.containsKey('date_to'), true);
   });
+
+  // 21 Sept 2026 — the leaderboard used to fabricate a revenue figure
+  // whenever manager_stats was empty (which was always, since the backend
+  // never sent it): total revenue divided by a rank-based number. Now that
+  // the backend sends real manager_stats, this asserts the real figure is
+  // shown rather than a guess.
+  testWidgets('shows a real per-manager revenue figure from manager_stats', (tester) async {
+    // The AM leaderboard sits near the bottom of this tab's ListView, after
+    // the KPI scroll and three charts — same "never gets Elements built
+    // without scrolling" issue as client_detail_page_test.dart on the
+    // default 800x600 test surface. A tall surface avoids scrolling between
+    // assertions. Width stays at the default 800 (not 400 like
+    // client_detail_page_test.dart) — a narrower width overflows the
+    // section-header Row (title + subtitle + Spacer) that every chart
+    // section in this tab shares, which is a pre-existing layout issue
+    // unrelated to this fix.
+    await tester.binding.setSurfaceSize(const Size(800, 2200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final httpClient = MockHttpClient();
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+      final uri = inv.positionalArguments[0] as Uri;
+      if (uri.path.endsWith('/clients')) return jsonResponse('{"clients":[]}');
+      if (uri.path.endsWith('/account-managers')) return jsonResponse('{"managers":[]}');
+      // contracts_by_status must be non-empty: _buildKpiScroll() does
+      // contracts.values.map(...).reduce(...), and reduce() throws on an
+      // empty iterable — same reason every other mock in this file
+      // includes at least one status.
+      return jsonResponse(
+        '{"total_clients":1,"payments_by_month":{},"contracts_by_status":{"draft":1},"pending_approvals":0,'
+        '"active_workspaces":0,"manager_stats":[{"name":"Sara","revenue":1500,"clients":3,"contracts":2}]}',
+      );
+    });
+
+    await pumpTab(tester, httpClient);
+
+    expect(find.text('Sara'), findsOneWidget);
+    expect(find.text('1500'), findsOneWidget);
+  });
+
+  // When manager_stats is genuinely empty (no account managers on file), the
+  // leaderboard falls back to the plain /account-managers list for names —
+  // but must show "no data" for revenue, not invent one.
+  testWidgets('falls back to "—" for revenue when manager_stats is empty', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 2200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final httpClient = MockHttpClient();
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+      final uri = inv.positionalArguments[0] as Uri;
+      if (uri.path.endsWith('/clients')) return jsonResponse('{"clients":[]}');
+      if (uri.path.endsWith('/account-managers')) {
+        return jsonResponse('{"managers":[{"id":1,"name":"Ali"}]}');
+      }
+      return jsonResponse(
+        '{"total_clients":1,"payments_by_month":{"2026-09":50000},"contracts_by_status":{"draft":1},'
+        '"pending_approvals":0,"active_workspaces":0,"manager_stats":[]}',
+      );
+    });
+
+    await pumpTab(tester, httpClient);
+
+    expect(find.text('Ali'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    // The old bug: 50000 (the total) divided down into a fake per-row
+    // number. Assert that math isn't happening anymore.
+    expect(find.text('50000'), findsNothing);
+    expect(find.text('16666'), findsNothing);
+  });
+
+  // 21 Sept 2026 — payments_by_month (used by both the revenue KPI card and
+  // the monthly-revenue chart above) sums every currency into one number
+  // with no currency attached at all. Same fix as manager_detail_page.dart:
+  // payments_by_month_by_currency drives a real biggest-currency headline
+  // on the KPI card and a currency toggle above the chart.
+  Future<void> pumpWithReports(WidgetTester tester, String reportsJson) async {
+    await tester.binding.setSurfaceSize(const Size(800, 2200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final httpClient = MockHttpClient();
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+      final uri = inv.positionalArguments[0] as Uri;
+      if (uri.path.endsWith('/clients')) return jsonResponse('{"clients":[]}');
+      if (uri.path.endsWith('/account-managers')) return jsonResponse('{"managers":[]}');
+      return jsonResponse(reportsJson);
+    });
+    await pumpTab(tester, httpClient);
+  }
+
+  testWidgets('shows the largest currency total with its code on the revenue KPI card', (tester) async {
+    await pumpWithReports(tester,
+        '{"total_clients":0,"contracts_by_status":{"draft":1},"pending_approvals":0,"active_workspaces":0,'
+        '"payments_by_month_by_currency":{"2026-09":{"SAR":85000,"USD":6000}}}');
+
+    expect(find.textContaining('85.0K SAR'), findsOneWidget);
+  });
+
+  testWidgets('does not show currency chips above the chart when there is only one currency', (tester) async {
+    await pumpWithReports(tester,
+        '{"total_clients":0,"contracts_by_status":{"draft":1},"pending_approvals":0,"active_workspaces":0,'
+        '"payments_by_month_by_currency":{"2026-09":{"SAR":5000}}}');
+
+    // The KPI card's own text is "5.0K SAR" (one Text widget, not two), so
+    // an exact match on the bare code only finds something if a chip
+    // rendered one.
+    expect(find.text('SAR'), findsNothing);
+  });
+
+  testWidgets('shows a chip per currency, and switching the chart does not change the KPI headline', (tester) async {
+    await pumpWithReports(tester,
+        '{"total_clients":0,"contracts_by_status":{"draft":1},"pending_approvals":0,"active_workspaces":0,'
+        '"payments_by_month_by_currency":{"2026-08":{"SAR":1000,"USD":9000},"2026-09":{"SAR":2000,"USD":1000}}}');
+
+    // USD totals 10000 vs SAR's 3000, so USD is the KPI headline and starts
+    // selected on the chart.
+    expect(find.textContaining('10.0K USD'), findsOneWidget);
+    expect(find.text('SAR'), findsOneWidget);
+    expect(find.text('USD'), findsOneWidget);
+
+    await tester.tap(find.text('SAR'));
+    await tester.pumpAndSettle();
+
+    // Switching the chart's currency doesn't change which currency the KPI
+    // card headlines — that's always the biggest total overall.
+    expect(find.textContaining('10.0K USD'), findsOneWidget);
+  });
 }

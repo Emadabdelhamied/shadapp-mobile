@@ -1,17 +1,20 @@
 // Extracted from client_onboarding_screen.dart as part of بند ٨ (file splitting).
-// The "request payment" bottom sheet + its submit handler, preserved byte-for-byte
-// behaviorally: the outer function still builds methodLabels/currencyLabels using
-// the page's own `context` (matching the original, which computed them before
-// calling showModalBottomSheet), while everything inside the sheet builder keeps
-// using the sheet's own `ctx`.
+// The "request payment" bottom sheet + its submit handler. The outer function
+// still builds methodLabels using the page's own `context` (matching the
+// original, which computed them before calling showModalBottomSheet), while
+// everything inside the sheet builder keeps using the sheet's own `ctx`.
+//
+// `currency` is no longer a free choice — it's the caller-supplied contract
+// currency, shown read-only (plans/payment-currency-plan.md ح4); the backend
+// enforces this regardless via PaymentController::resolveCurrency().
 
 import 'dart:io' show File;
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
+import '../../core/api_client.dart';
+import '../../core/app_log.dart';
+import '../../core/helpers/proof_image_picker.dart';
 import '../../core/theme.dart';
 import '../../providers/payment_provider.dart';
 
@@ -19,6 +22,13 @@ void showOnboardingPaymentSheet({
   required BuildContext context,
   required double suggestedAmount,
   required int? workspaceId,
+  // The payment's currency is always the linked contract's — enforced
+  // server-side by PaymentController::resolveCurrency() regardless of what
+  // gets submitted (plans/payment-currency-plan.md). This used to be a free
+  // 9-currency dropdown defaulting to SAR; it's now a fixed value passed in
+  // by buildPaymentStage (derived from the workspace's contract), displayed
+  // as read-only text rather than offered as a choice.
+  required String currency,
   required PaymentProvider paymentProvider,
   required Future<void> Function() loadClientData,
 }) {
@@ -31,18 +41,11 @@ void showOnboardingPaymentSheet({
     'mobile_wallet': AppLocalizations.of(context)!.payments_methodMobileWallet,
   };
 
-  const currencies = ['SAR', 'USD', 'EUR', 'AED', 'EGP', 'KWD', 'QAR', 'BHD', 'OMR'];
-  final currencyLabels = {
-    'SAR': AppLocalizations.of(context)!.currency_sar, 'USD': AppLocalizations.of(context)!.currency_usd, 'EUR': AppLocalizations.of(context)!.currency_eur,
-    'AED': AppLocalizations.of(context)!.currency_aed, 'EGP': AppLocalizations.of(context)!.currency_egp, 'KWD': AppLocalizations.of(context)!.currency_kwd,
-    'QAR': AppLocalizations.of(context)!.currency_qar, 'BHD': AppLocalizations.of(context)!.currency_bhd, 'OMR': AppLocalizations.of(context)!.currency_omr,
-  };
-
   final amountCtrl = TextEditingController(text: suggestedAmount > 0 ? suggestedAmount.toStringAsFixed(0) : '');
-  final selectedCurrency = ValueNotifier<String>('SAR');
   final selectedMethod = ValueNotifier<String>('bank_transfer');
   List<Map<String, dynamic>> proofFiles = [];
   final uploadingNotifier = ValueNotifier<bool>(false);
+  final errorNotifier = ValueNotifier<String?>(null);
 
   showModalBottomSheet(
     context: context,
@@ -58,27 +61,15 @@ void showOnboardingPaymentSheet({
               IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
             ]),
             const SizedBox(height: 16),
-            ValueListenableBuilder<String>(
-              valueListenable: selectedCurrency,
-              builder: (_, cur, __) => TextField(
-                controller: amountCtrl,
-                decoration: InputDecoration(labelText: '${AppLocalizations.of(ctx)!.onboarding_amountField} *', hintText: '0.00', prefixText: '$cur '),
-                keyboardType: TextInputType.number,
-              ),
+            TextField(
+              controller: amountCtrl,
+              decoration: InputDecoration(labelText: '${AppLocalizations.of(ctx)!.onboarding_amountField} *', hintText: '0.00', prefixText: '$currency '),
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 12),
-            ValueListenableBuilder<String>(
-              valueListenable: selectedCurrency,
-              builder: (_, cur, __) => DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: cur,
-                decoration: InputDecoration(labelText: AppLocalizations.of(ctx)!.onboarding_currencyField),
-                items: currencies.map((c) => DropdownMenuItem(
-                  value: c,
-                  child: Text('$c — ${currencyLabels[c] ?? ''}'),
-                )).toList(),
-                onChanged: (v) { if (v != null) selectedCurrency.value = v; },
-              ),
+            InputDecorator(
+              decoration: InputDecoration(labelText: AppLocalizations.of(ctx)!.onboarding_currencyField),
+              child: Text(currency, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.gold)),
             ),
             const SizedBox(height: 12),
             ValueListenableBuilder<String>(
@@ -153,17 +144,9 @@ void showOnboardingPaymentSheet({
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () async {
-                    final r = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'], withData: kIsWeb);
-                    if (r != null && r.files.isNotEmpty) {
-                      setSheetState(() {
-                        for (final f in r.files) {
-                          if (kIsWeb) {
-                            proofFiles.add({'bytes': f.bytes, 'name': f.name});
-                          } else {
-                            proofFiles.add({'file': File(f.path!), 'name': f.name});
-                          }
-                        }
-                      });
+                    final picked = await pickProofFromGallery(multiple: true);
+                    if (picked.isNotEmpty) {
+                      setSheetState(() { proofFiles.addAll(picked); });
                     }
                   },
                   icon: const Icon(Icons.upload_file, size: 18),
@@ -177,17 +160,9 @@ void showOnboardingPaymentSheet({
               Expanded(
                 child: OutlinedButton.icon(
                 onPressed: () async {
-                  final r = await ImagePicker().pickImage(source: ImageSource.camera);
-                  if (r != null) {
-                    setSheetState(() {
-                      if (kIsWeb) {
-                        r.readAsBytes().then((bytes) {
-                          setSheetState(() { proofFiles.add({'bytes': bytes, 'name': r.name}); });
-                        });
-                      } else {
-                        proofFiles.add({'file': File(r.path), 'name': r.name});
-                      }
-                    });
+                  final picked = await pickProofFromCamera();
+                  if (picked != null) {
+                    setSheetState(() { proofFiles.add(picked); });
                   }
                 },
                   icon: const Icon(Icons.camera_alt, size: 18),
@@ -200,6 +175,15 @@ void showOnboardingPaymentSheet({
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(AppLocalizations.of(ctx)!.onboarding_filesAttached(proofFiles.length), style: TextStyle(fontSize: 11, color: ShadColors.textDisabled)),
               ),
+            ValueListenableBuilder<String?>(
+              valueListenable: errorNotifier,
+              builder: (_, err, __) => err == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(err, style: const TextStyle(color: ShadColors.error, fontSize: 13)),
+                    ),
+            ),
             const SizedBox(height: 20),
             ValueListenableBuilder<bool>(
               valueListenable: uploadingNotifier,
@@ -207,8 +191,8 @@ void showOnboardingPaymentSheet({
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: uploading ? null : () => _submitPaymentOnboarding(
-                    ctx, setSheetState, uploadingNotifier, workspaceId,
-                    amountCtrl, selectedCurrency.value, selectedMethod.value, proofFiles,
+                    ctx, setSheetState, uploadingNotifier, errorNotifier, workspaceId,
+                    amountCtrl, currency, selectedMethod.value, proofFiles,
                     paymentProvider, loadClientData,
                   ),
                   child: uploading
@@ -228,6 +212,7 @@ Future<void> _submitPaymentOnboarding(
   BuildContext ctx,
   void Function(void Function()) setSheetState,
   ValueNotifier<bool> uploadingNotifier,
+  ValueNotifier<String?> errorNotifier,
   int? workspaceId,
   TextEditingController amountCtrl,
   String currency,
@@ -236,13 +221,21 @@ Future<void> _submitPaymentOnboarding(
   PaymentProvider paymentProvider,
   Future<void> Function() loadClientData,
 ) async {
+  // Captured once, before any `await`: looking it up again inside the catch
+  // blocks below (after the request has actually gone out) is exactly the
+  // `use_build_context_synchronously` pattern flutter analyze flags, since it
+  // can't tell a caught exception means ctx is still safe to read from.
+  final l10n = AppLocalizations.of(ctx)!;
+  errorNotifier.value = null;
   final amount = double.tryParse(amountCtrl.text);
   if (amount == null || amount <= 0) {
-    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(AppLocalizations.of(ctx)!.onboarding_enterValidAmount)));
+    errorNotifier.value = l10n.onboarding_enterValidAmount;
+    if (ctx.mounted) setSheetState(() {});
     return;
   }
   if (workspaceId == null) {
-    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(AppLocalizations.of(ctx)!.onboarding_workspaceUnavailable)));
+    errorNotifier.value = l10n.onboarding_workspaceUnavailable;
+    if (ctx.mounted) setSheetState(() {});
     return;
   }
   uploadingNotifier.value = true;
@@ -267,12 +260,22 @@ Future<void> _submitPaymentOnboarding(
     );
 
     if (ctx.mounted) {
-      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(ctx)!.onboarding_paymentSent))])));
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Text(l10n.onboarding_paymentSent)])));
       Navigator.pop(ctx);
     }
     loadClientData();
-  } catch (_) {
-    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(AppLocalizations.of(ctx)!.onboarding_paymentFailed)));
+  } on ValidationException catch (e) {
+    AppLog.error('client_onboarding_payment_sheet._submitPaymentOnboarding', e);
+    errorNotifier.value = e.message;
+  } on ConnectionException catch (e) {
+    AppLog.error('client_onboarding_payment_sheet._submitPaymentOnboarding', e);
+    errorNotifier.value = l10n.connectionFailedMessage;
+  } on ServerException catch (e) {
+    AppLog.error('client_onboarding_payment_sheet._submitPaymentOnboarding', e);
+    errorNotifier.value = e.message.isNotEmpty ? e.message : l10n.serverErrorMessage;
+  } catch (e, s) {
+    AppLog.error('client_onboarding_payment_sheet._submitPaymentOnboarding', e, s);
+    errorNotifier.value = l10n.onboarding_paymentFailed;
   }
   uploadingNotifier.value = false;
   if (ctx.mounted) setSheetState(() {});

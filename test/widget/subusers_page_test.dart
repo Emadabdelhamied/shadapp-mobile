@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shadapp_client/core/widgets/loading_state.dart';
 import 'package:shadapp_client/data/sub_user_repository.dart';
 import 'package:shadapp_client/features/subusers/subusers_page.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
@@ -12,6 +13,19 @@ void main() {
   setUpAll(() {
     registerFallbackValue(Uri.parse('http://localhost'));
   });
+
+  // SUBUSER_PLAN.md §6.1 — the page now also fetches GET
+  // /sub-user-permissions alongside the sub-users list, so GET stubs need to
+  // answer both by path instead of returning the same body for every GET.
+  void stubGets(MockHttpClient httpClient, String subUsersJson) {
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+      final uri = inv.positionalArguments[0] as Uri;
+      if (uri.path.endsWith('/sub-user-permissions')) {
+        return jsonResponse('{"permissions":["can_chat","can_view_contracts","can_approve_contracts","can_view_payments","can_upload_payment_proof","can_view_approvals","can_respond_approvals","can_view_files","can_upload_files","can_view_meetings","can_join_meetings"]}');
+      }
+      return jsonResponse(subUsersJson);
+    });
+  }
 
   Future<void> pumpPage(WidgetTester tester, SubUserProvider provider, dynamic api) async {
     await tester.pumpWidget(MaterialApp(
@@ -27,9 +41,7 @@ void main() {
     final api = buildTestApiClient(client: httpClient);
     api.role = 'client';
     api.userId = 9;
-    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer(
-      (_) async => jsonResponse('{"sub_users":[{"id":1,"name":"Sub One","email":"sub1@x.com","permissions":{}}]}'),
-    );
+    stubGets(httpClient, '{"sub_users":[{"id":1,"name":"Sub One","email":"sub1@x.com","permissions":{}}]}');
     final provider = SubUserProvider(repository: SubUserRepository(api: api));
 
     await pumpPage(tester, provider, api);
@@ -38,14 +50,35 @@ void main() {
     expect(find.text('Sub One'), findsOneWidget);
   });
 
+  // 19 Sept 2026 — this page is mounted eagerly for every dashboard load
+  // regardless of role, and used to call GET /clients/{id}/sub-users
+  // unconditionally in _load(). The backend forbids a sub-user from ever
+  // listing their colleagues (SubUserPolicy), so that call always 403'd —
+  // a doomed request and an error log on every single sub-user session.
+  testWidgets('a sub-user never calls the sub-users list endpoint', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.role = 'sub_user';
+    api.userId = 9;
+    api.subUserId = 1;
+    stubGets(httpClient, '{"sub_users":[{"id":1,"name":"Sub One","email":"sub1@x.com","permissions":{}}]}');
+    final provider = SubUserProvider(repository: SubUserRepository(api: api));
+
+    await pumpPage(tester, provider, api);
+
+    verifyNever(() => httpClient.get(any(that: predicate<Uri>((u) => u.path.endsWith('/sub-users'))), headers: any(named: 'headers')));
+    // Confirms _loading was actually reset to false in the early-return
+    // branch, not just that the network call was skipped — otherwise this
+    // page would be stuck on LoadingState() forever.
+    expect(find.byType(LoadingState), findsNothing);
+  });
+
   testWidgets('shows the empty state when there are no sub-users', (tester) async {
     final httpClient = MockHttpClient();
     final api = buildTestApiClient(client: httpClient);
     api.role = 'client';
     api.userId = 9;
-    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer(
-      (_) async => jsonResponse('{"sub_users":[]}'),
-    );
+    stubGets(httpClient, '{"sub_users":[]}');
     final provider = SubUserProvider(repository: SubUserRepository(api: api));
 
     await pumpPage(tester, provider, api);
@@ -58,9 +91,7 @@ void main() {
     final api = buildTestApiClient(client: httpClient);
     api.role = 'client';
     api.userId = 9;
-    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer(
-      (_) async => jsonResponse('{"sub_users":[]}'),
-    );
+    stubGets(httpClient, '{"sub_users":[]}');
     Map<String, dynamic>? sentBody;
     when(() => httpClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body'))).thenAnswer((inv) async {
       sentBody = jsonDecode(inv.namedArguments[#body] as String) as Map<String, dynamic>;
@@ -91,9 +122,7 @@ void main() {
     final api = buildTestApiClient(client: httpClient);
     api.role = 'client';
     api.userId = 9;
-    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer(
-      (_) async => jsonResponse('{"sub_users":[{"id":1,"name":"Sub One","email":"sub1@x.com","permissions":{}}]}'),
-    );
+    stubGets(httpClient, '{"sub_users":[{"id":1,"name":"Sub One","email":"sub1@x.com","permissions":{}}]}');
     when(() => httpClient.delete(any(), headers: any(named: 'headers'))).thenAnswer(
       (_) async => jsonResponse('{}'),
     );
@@ -115,9 +144,7 @@ void main() {
     final api = buildTestApiClient(client: httpClient);
     api.role = 'client';
     api.userId = 9;
-    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer(
-      (_) async => jsonResponse('{"sub_users":[{"id":1,"name":"Sub One","email":"sub1@x.com","permissions":{"can_chat":false}}]}'),
-    );
+    stubGets(httpClient, '{"sub_users":[{"id":1,"name":"Sub One","email":"sub1@x.com","permissions":{"can_chat":false}}]}');
     Map<String, dynamic>? sentBody;
     when(() => httpClient.patch(any(), headers: any(named: 'headers'), body: any(named: 'body'))).thenAnswer((inv) async {
       sentBody = jsonDecode(inv.namedArguments[#body] as String) as Map<String, dynamic>;

@@ -120,6 +120,12 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
   Map<String, dynamic> _subUserPermissions = {};
   bool get _isSubUser => _api.role == 'sub_user';
   late final ReverbService _reverb = widget.reverb ?? ReverbService();
+  // plans/notifications-badges-toasts-plan.md ن15 — ReverbService's callback
+  // fields are listener lists now, not single values another screen's
+  // connect() call could silently overwrite. Each addXxxListener() call
+  // below returns its own removal callback; dispose() calls them all so this
+  // screen's closures don't linger on the shared singleton once it's gone.
+  final List<VoidCallback> _reverbUnsubscribers = [];
 
   int _computeStage() {
     final client = _client;
@@ -154,8 +160,13 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
     return map[stage] ?? 0;
   }
 
-  void _goToPayments() {
-    setState(() => _selectedIndex = 1);
+  int? _targetPaymentId;
+
+  void _goToPayments({int? targetPaymentId}) {
+    setState(() {
+      _targetPaymentId = targetPaymentId;
+      _selectedIndex = 1;
+    });
   }
 
   @override
@@ -180,16 +191,21 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
     if (mounted) _loadClientData();
   }
 
+  int? _joinedWsId;
+
   void _setupRealtimeNotifications() {
     final cid = _api.userId;
     if (cid == null) return;
     final reverb = _reverb;
     reverb.connectForClient(cid);
-    reverb.onNotificationReceived = (payload) {
+    _reverbUnsubscribers.add(reverb.addNotificationReceivedListener((payload) {
       _loadNotifs();
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
-      final msg = (payload['data'] as Map?)?['message'] as String? ?? (payload['data'] as Map?)?['text'] as String? ?? l10n.dashboard_newNotification;
+      final rawData = payload['data'];
+      final dataMap = rawData is Map ? rawData : null;
+      final msg = (payload['message'] ?? payload['text'] ?? dataMap?['message'] ?? dataMap?['text']) as String? 
+          ?? l10n.dashboard_newNotification;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(msg, style: const TextStyle(fontSize: 13)),
         behavior: SnackBarBehavior.floating,
@@ -197,19 +213,19 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
       ));
-    };
-    reverb.onContractStatusChanged = () {
+    }));
+    _reverbUnsubscribers.add(reverb.addContractStatusChangedListener(() {
       _loadClientData();
       _contractRefreshNotifier.value++;
-    };
+    }));
     // REALTIME_PLAN.md Stage 5 — mirrors onContractStatusChanged above.
     // These two cover the first-contract "waiting for activation" screen
     // (PaymentStatusChanged/WorkspaceStatusChanged are what actually change
     // during that wait, per REALTIME_PLAN.md section 2's مسار أ), so a plain
     // reload of the client (which nests the workspace) is enough — no new
     // state beyond what _loadClientData() already fetches.
-    reverb.onWorkspaceStatusChanged = (_) => _loadClientData();
-    reverb.onPaymentStatusChanged = (_) => _loadClientData();
+    _reverbUnsubscribers.add(reverb.addWorkspaceStatusChangedListener((_) => _loadClientData()));
+    _reverbUnsubscribers.add(reverb.addPaymentStatusChangedListener((_) => _loadClientData()));
     if (widget.enableFcm) {
       _fcmSubscription = FirebaseMessaging.onMessage.listen((msg) {
         final type = msg.data['type'] as String? ?? '';
@@ -247,6 +263,12 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
     WidgetsBinding.instance.removeObserver(this);
     _contractRefreshNotifier.removeListener(_onChildDataChanged);
     _fcmSubscription?.cancel();
+    for (final unsubscribe in _reverbUnsubscribers) {
+      unsubscribe();
+    }
+    if (_joinedWsId != null) {
+      _reverb.leaveWorkspace(_joinedWsId!);
+    }
     super.dispose();
   }
 
@@ -260,8 +282,14 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
         _workspace = data['client']?['workspace'] as Map<String, dynamic>?;
         if (_workspace != null) {
           final wsId = _workspace!['id'] as int?;
-          if (wsId != null && wsId != _api.workspaceId) {
-            await _api.setUserData(workspace: wsId);
+          if (wsId != null) {
+            if (wsId != _api.workspaceId) {
+              await _api.setUserData(workspace: wsId);
+            }
+            if (_joinedWsId != wsId) {
+              await _reverb.connect(wsId);
+              _joinedWsId = wsId;
+            }
           }
         }
         _checkAutoAdvance();
@@ -309,17 +337,16 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
     } catch (e, s) {
       AppLog.error('client_dashboard._loadNotifs(unread)', e, s);
     }
-    final wsId = _api.workspaceId;
-    if (wsId != null) {
-      try {
-        final messages = await _childChatProvider.fetchMessages(wsId);
-        _unreadChat = messages.where((m) => m['sender_type'] != 'App\\Models\\Client' && m['read_at'] == null).length;
-      } catch (e, s) {
-        AppLog.error('client_dashboard._loadNotifs(chat)', e, s);
-      }
-    }
     try {
       final data = await _dashboardProvider.fetchBadgeCounts();
+      // 24 Sept 2026 (server-side-stats-plan.md, Stage 3, M8) — was a
+      // separate _childChatProvider.fetchMessages(wsId) call that downloaded
+      // the workspace's ENTIRE chat history just to filter+count it here.
+      // DashboardController::clientCounts() already computes this exact
+      // count server-side (staff messages with read_at null) for the 'chat'
+      // key below, so this now reuses the fetchBadgeCounts() call this
+      // method was already making, at no extra request.
+      _unreadChat = int.tryParse(data['chat']?.toString() ?? '') ?? 0;
       _badgeContracts = int.tryParse(data['contracts']?.toString() ?? '') ?? 0;
       _badgePayments = int.tryParse(data['payments']?.toString() ?? '') ?? 0;
       _badgeApprovals = int.tryParse(data['approvals']?.toString() ?? '') ?? 0;
@@ -342,11 +369,60 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
       // direction to fail in — but it should never happen silently.
       AppLog.error('client_dashboard._loadSubUserPermissions', e, s);
     }
+    _enforceTabPermission();
     if (mounted) setState(() {});
+  }
+
+  /// 19 Sept 2026 — a tapped notification sets `_selectedIndex` straight
+  /// from `widget.initialTab` in initState(), with no permission check at
+  /// all (see notification_routing.dart's `fcmTabIndex`). A sub-user
+  /// without `can_view_contracts` who taps a contract notification landed
+  /// squarely on the contracts tab, which the backend happily served
+  /// (`can_view_*` flags are UI-only by design, DATA_SAFETY_PLAN.md §7.3 —
+  /// tenant isolation is the real boundary, not this flag) — a full
+  /// permission bypass via notification tap.
+  ///
+  /// This can't be checked at the point `_selectedIndex` is first set:
+  /// `_subUserPermissions` starts empty and is only filled in by this same
+  /// method (async), so a same-tick check would fail closed for every
+  /// legitimate tab too. Instead, re-validate once real permissions are in
+  /// and correct course if the currently-selected tab (whatever set it —
+  /// notification, a stale deep link, anything) isn't one this sub-user is
+  /// actually allowed to see, same self-healing shape as
+  /// `_checkAutoAdvance()`'s stage-lock correction below. Unlike that one,
+  /// this is a security gate, not a UX nudge, so it deliberately ignores
+  /// `_hasInitialTabOverride`.
+  void _enforceTabPermission() {
+    if (!_isSubUser) return;
+    const indexToTab = {0: 'contracts', 1: 'payments', 2: 'chat', 3: 'approvals', 4: 'files', 5: 'meetings', 6: 'signature', 7: 'subusers'};
+    final currentTab = indexToTab[_selectedIndex];
+    if (currentTab != null && _isTabAllowedByPermission(currentTab)) return;
+
+    for (final entry in indexToTab.entries) {
+      if (_isTabAllowedByPermission(entry.value)) {
+        _selectedIndex = entry.key;
+        return;
+      }
+    }
+    // A sub-user with literally zero permissions granted yet (the default
+    // for a newly-created one — see SubUserController::store()) has no
+    // tab this loop would pick. Falling back to 0 (contracts) rather than
+    // leaving _selectedIndex on the notification's original target
+    // mirrors _buildDashboard()'s own `allowedBottomTabs.isEmpty` fallback
+    // just below — not a new exposure, since tenant isolation (not this
+    // permission flag) is what actually bounds the data either way.
+    _selectedIndex = 0;
   }
 
   bool _isTabAllowedByPermission(String tab) {
     if (!_isSubUser) return true;
+    // signature/subusers are staff-and-client-only features (see the
+    // `if (!_isSubUser) ...` guard around their PopupMenuItems below) —
+    // they were never meant to fall into the "no permission key means
+    // always allowed" branch further down, which would otherwise let a
+    // sub-user land on either via a crafted tab index (e.g. a deep link),
+    // even though the UI never offers them a way to navigate there.
+    if (tab == 'signature' || tab == 'subusers') return false;
     const tabPermMap = {
       'contracts': 'can_view_contracts',
       'payments': 'can_view_payments',
@@ -354,8 +430,6 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
       'approvals': 'can_view_approvals',
       'files': 'can_view_files',
       'meetings': 'can_view_meetings',
-      'signature': null,
-      'subusers': null,
     };
     final perm = tabPermMap[tab];
     if (perm == null) return true;
@@ -420,7 +494,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
   Widget _buildDashboard() {
     final pages = <Widget>[
       ContractsPage(onGoToPayments: _goToPayments, refreshNotifier: _contractRefreshNotifier, api: _api),
-      PaymentsPage(paymentProvider: _childPaymentProvider, contractProvider: _childContractProvider, api: _api),
+      PaymentsPage(initialPaymentId: _targetPaymentId, onTargetPaymentHandled: () => _targetPaymentId = null, paymentProvider: _childPaymentProvider, contractProvider: _childContractProvider, api: _api),
       ChatPage(onGoToPayments: _goToPayments, reverb: widget.reverb, enablePolling: widget.enablePolling, chatProvider: _childChatProvider, contractProvider: _childContractProvider, meetingProvider: _childMeetingProvider, api: _api),
       ApprovalsPage(workspaceId: _workspace?['id'] as int?, approvalProvider: _childApprovalProvider, api: _api),
       ClientFilesPage(fileProvider: _childFileProvider, api: _api),
@@ -444,14 +518,23 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
         ),
         actions: [
           Stack(children: [
-            IconButton(icon: const Icon(Icons.notifications_outlined), onPressed: () => context.push('/notifications')),
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              // plans/notifications-badges-toasts-plan.md ن12 — this used to
+              // leave the badge showing its stale pre-visit count until the
+              // next 60s poll tick, even though the notifications page
+              // itself just marked things read/deleted.
+              onPressed: () => context.push('/notifications').then((_) => _loadNotifs()),
+            ),
             if (_unreadNotifs > 0)
               Positioned(
                 right: 6, top: 6,
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: const BoxDecoration(color: ShadColors.crimson, shape: BoxShape.circle),
-                  child: Text('$_unreadNotifs', style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
+                  // ن12 — capped at 99+ like every other tab badge in this
+                  // app; this one was left uncapped.
+                  child: Text(_unreadNotifs > 99 ? '99+' : '$_unreadNotifs', style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
           ]),

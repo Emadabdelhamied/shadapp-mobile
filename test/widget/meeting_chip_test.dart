@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadapp_client/core/widgets/meeting_chip.dart';
 import '../helpers/pump_app.dart';
@@ -78,5 +79,137 @@ void main() {
       }),
     );
     expect(find.text('Join Now'), findsNothing);
+  });
+
+  // 23 Sept 2026 — a completed/cancelled meeting used to look identical to an
+  // upcoming one in the chat (same "Today — 18:00 • 30m" line, no status at
+  // all). It now shows the same StatusBadge as the meetings tab.
+  testWidgets('shows a Completed badge for a completed meeting', (tester) async {
+    await pumpWithLocalizations(
+      tester,
+      MeetingChip(metadata: {
+        'title': 'Kickoff',
+        'scheduled_at': iso(const Duration(hours: -1)),
+        'duration_minutes': 30,
+        'link': 'https://meet.example.com/x',
+        'status': 'completed',
+      }),
+    );
+    expect(find.text('Completed'), findsOneWidget);
+    expect(find.text('Join Now'), findsNothing);
+  });
+
+  testWidgets('shows a Cancelled badge for a cancelled meeting', (tester) async {
+    await pumpWithLocalizations(
+      tester,
+      MeetingChip(metadata: {
+        'title': 'Kickoff',
+        'scheduled_at': iso(const Duration(hours: 2)),
+        'status': 'cancelled',
+      }),
+    );
+    expect(find.text('Cancelled'), findsOneWidget);
+  });
+
+  testWidgets('shows no status badge for a scheduled meeting', (tester) async {
+    await pumpWithLocalizations(
+      tester,
+      MeetingChip(metadata: {
+        'title': 'Kickoff',
+        'scheduled_at': iso(const Duration(hours: 2)),
+        'status': 'scheduled',
+      }),
+    );
+    expect(find.text('Scheduled'), findsNothing);
+    expect(find.text('Completed'), findsNothing);
+    expect(find.text('Cancelled'), findsNothing);
+  });
+
+  // 23 Sept 2026 — a reschedule posts a fresh card flagged
+  // metadata.rescheduled; it says so, but a later status badge wins.
+  testWidgets('shows a Rescheduled pill on a reschedule card', (tester) async {
+    await pumpWithLocalizations(
+      tester,
+      MeetingChip(metadata: {
+        'title': 'Kickoff',
+        'scheduled_at': iso(const Duration(days: 2)),
+        'status': 'scheduled',
+        'rescheduled': true,
+      }),
+    );
+    expect(find.text('Rescheduled'), findsOneWidget);
+  });
+
+  testWidgets('a completed reschedule card shows the status badge instead', (tester) async {
+    await pumpWithLocalizations(
+      tester,
+      MeetingChip(metadata: {
+        'title': 'Kickoff',
+        'scheduled_at': iso(const Duration(hours: -1)),
+        'status': 'completed',
+        'rescheduled': true,
+      }),
+    );
+    expect(find.text('Completed'), findsOneWidget);
+    expect(find.text('Rescheduled'), findsNothing);
+  });
+
+  testWidgets('with onEnter, tapping calls it with meeting_id instead of opening link', (tester) async {
+    int? entered;
+    await pumpWithLocalizations(
+      tester,
+      MeetingChip(
+        metadata: {
+          'meeting_id': 7,
+          'title': 'Kickoff',
+          'link': 'https://zoom.us/j/1',
+          'scheduled_at': iso(const Duration(minutes: -5)),
+          'duration_minutes': 30,
+          'status': 'scheduled',
+        },
+        onEnter: (id) async => entered = id,
+      ),
+    );
+    await tester.tap(find.byType(GestureDetector).last);
+    await tester.pump();
+    expect(entered, 7);
+  });
+
+  testWidgets('with onEnter and isHost: true (or default), button shows "Start meeting"', (tester) async {
+    await pumpWithLocalizations(
+      tester,
+      MeetingChip(
+        metadata: {
+          'meeting_id': 7,
+          'title': 'Kickoff',
+          'link': 'https://zoom.us/j/1',
+          'scheduled_at': iso(const Duration(minutes: -5)),
+          'duration_minutes': 30,
+          'status': 'scheduled',
+        },
+        onEnter: (id) async {},
+        isHost: true,
+      ),
+    );
+    expect(find.text('Start meeting'), findsOneWidget);
+  });
+
+  testWidgets('with onEnter and isHost: false, button shows "Join"', (tester) async {
+    await pumpWithLocalizations(
+      tester,
+      MeetingChip(
+        metadata: {
+          'meeting_id': 7,
+          'title': 'Kickoff',
+          'link': 'https://zoom.us/j/1',
+          'scheduled_at': iso(const Duration(minutes: -5)),
+          'duration_minutes': 30,
+          'status': 'scheduled',
+        },
+        onEnter: (id) async {},
+        isHost: false,
+      ),
+    );
+    expect(find.text('Join'), findsOneWidget);
   });
 }

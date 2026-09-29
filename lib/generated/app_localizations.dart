@@ -884,6 +884,12 @@ abstract class AppLocalizations {
   /// **'Server Error'**
   String get serverError;
 
+  /// No description provided for @fileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'File is too large'**
+  String get fileTooLarge;
+
   /// No description provided for @dataLoadFailed.
   ///
   /// In en, this message translates to:
@@ -1141,6 +1147,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Meeting'**
   String get meetingChipLabel;
+
+  /// No description provided for @meetingChipRescheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescheduled'**
+  String get meetingChipRescheduled;
 
   /// No description provided for @passwordFieldLabel.
   ///
@@ -6406,6 +6418,30 @@ abstract class AppLocalizations {
   /// **'Are you sure you want to approve this contract?'**
   String get approveContractConfirm;
 
+  /// No description provided for @signatureRequiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature Required'**
+  String get signatureRequiredTitle;
+
+  /// No description provided for @signatureRequiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You need to save your signature before approving.'**
+  String get signatureRequiredMessage;
+
+  /// No description provided for @signatureRequiredSubUserMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The primary account needs to save a signature first.'**
+  String get signatureRequiredSubUserMessage;
+
+  /// No description provided for @signatureRequiredAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Now'**
+  String get signatureRequiredAction;
+
   /// No description provided for @editReasonHint.
   ///
   /// In en, this message translates to:
@@ -7347,6 +7383,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Approvals'**
   String get calendarApprovals;
+
+  /// No description provided for @calendarContract.
+  ///
+  /// In en, this message translates to:
+  /// **'Contract'**
+  String get calendarContract;
 
   /// No description provided for @calendarContractEndLegend.
   ///
@@ -9125,6 +9167,12 @@ abstract class AppLocalizations {
   /// **'Vodafone Cash'**
   String get paymentsMethodVodafoneCash;
 
+  /// No description provided for @paymentsMultiCurrencyContractHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This client has contracts in multiple currencies — pick a contract to determine the payment currency'**
+  String get paymentsMultiCurrencyContractHint;
+
   /// No description provided for @paymentsNoteHint.
   ///
   /// In en, this message translates to:
@@ -9270,6 +9318,12 @@ abstract class AppLocalizations {
   /// **'Schedule Payments'**
   String get paymentsScheduleTitle;
 
+  /// No description provided for @paymentsSelectContract.
+  ///
+  /// In en, this message translates to:
+  /// **'-- Select Contract --'**
+  String get paymentsSelectContract;
+
   /// No description provided for @paymentsSendFailed.
   ///
   /// In en, this message translates to:
@@ -9305,6 +9359,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scheduled'**
   String get paymentsStatusScheduled;
+
+  /// No description provided for @paymentsStatusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get paymentsStatusRejected;
+
+  /// No description provided for @paymentsRejectionReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejection Reason'**
+  String get paymentsRejectionReason;
+
+  /// No description provided for @paymentsRejectionReasonOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejection Reason (Optional)'**
+  String get paymentsRejectionReasonOptional;
+
+  /// No description provided for @paymentsRejectionReasonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter rejection reason here...'**
+  String get paymentsRejectionReasonHint;
+
+  /// No description provided for @paymentsReuploadProof.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-upload Payment Proof'**
+  String get paymentsReuploadProof;
 
   /// No description provided for @paymentsTaxDetails.
   ///
@@ -9515,6 +9599,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Workspaces'**
   String get reportsWorkspaces;
+
+  /// No description provided for @saApprovalsApprovalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval'**
+  String get saApprovalsApprovalLabel;
+
+  /// No description provided for @saApprovalsApprovalPendingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting Client — {title}'**
+  String saApprovalsApprovalPendingTitle(Object title);
 
   /// No description provided for @saApprovalsContractApprovalTitle.
   ///
@@ -10176,12 +10272,6 @@ abstract class AppLocalizations {
   /// **'Total Clients'**
   String get amTotalClientsStat;
 
-  /// No description provided for @amTotalManagers.
-  ///
-  /// In en, this message translates to:
-  /// **'Total Managers'**
-  String get amTotalManagers;
-
   /// No description provided for @approvalLoadFailed.
   ///
   /// In en, this message translates to:
@@ -10200,221 +10290,71 @@ abstract class AppLocalizations {
   /// **'Failed to load payments'**
   String get paymentsFailedToLoad;
 
-  /// No description provided for @registerNow.
+  /// No description provided for @meeting_startAsHost.
   ///
   /// In en, this message translates to:
-  /// **'Register Now'**
-  String get registerNow;
+  /// **'Start meeting'**
+  String get meeting_startAsHost;
 
-  /// No description provided for @register_title.
+  /// No description provided for @meeting_join.
   ///
   /// In en, this message translates to:
-  /// **'Create Account'**
-  String get register_title;
+  /// **'Join'**
+  String get meeting_join;
 
-  /// No description provided for @register_subtitle.
+  /// No description provided for @meeting_opening.
   ///
   /// In en, this message translates to:
-  /// **'Tell us about your company. Our team reviews every request before the account goes live.'**
-  String get register_subtitle;
+  /// **'Opening…'**
+  String get meeting_opening;
 
-  /// No description provided for @register_sectionCompany.
+  /// No description provided for @contractDocsRequiredTitle.
   ///
   /// In en, this message translates to:
-  /// **'Company'**
-  String get register_sectionCompany;
+  /// **'Required Documents'**
+  String get contractDocsRequiredTitle;
 
-  /// No description provided for @register_sectionContact.
+  /// No description provided for @contractUploadRequiredFirst.
   ///
   /// In en, this message translates to:
-  /// **'Contact'**
-  String get register_sectionContact;
+  /// **'You must upload the required documents before approving the contract.'**
+  String get contractUploadRequiredFirst;
 
-  /// No description provided for @register_sectionSecurity.
+  /// No description provided for @contractUploadRequiredFirstWithDocs.
   ///
   /// In en, this message translates to:
-  /// **'Security'**
-  String get register_sectionSecurity;
+  /// **'Upload the required documents first: {docs}'**
+  String contractUploadRequiredFirstWithDocs(String docs);
 
-  /// No description provided for @register_companyName.
+  /// No description provided for @settingManagersCanReviewFiles.
   ///
   /// In en, this message translates to:
-  /// **'Company Name'**
-  String get register_companyName;
+  /// **'Manager Client Files Review'**
+  String get settingManagersCanReviewFiles;
 
-  /// No description provided for @register_companyNameHint.
+  /// No description provided for @settingManagersCanReviewFilesDesc.
   ///
   /// In en, this message translates to:
-  /// **'e.g. Shad Media'**
-  String get register_companyNameHint;
+  /// **'Allow account managers to approve or reject regular files for their clients'**
+  String get settingManagersCanReviewFilesDesc;
 
-  /// No description provided for @register_contactPerson.
+  /// No description provided for @onboardingWaitingEditContract.
   ///
   /// In en, this message translates to:
-  /// **'Contact Person'**
-  String get register_contactPerson;
+  /// **'Contract Edit Under Review'**
+  String get onboardingWaitingEditContract;
 
-  /// No description provided for @register_contactPersonHint.
+  /// No description provided for @onboardingWaitingEditContractMsg.
   ///
   /// In en, this message translates to:
-  /// **'Full name'**
-  String get register_contactPersonHint;
+  /// **'Our team is reviewing your edit request. An updated contract will be sent to you soon.'**
+  String get onboardingWaitingEditContractMsg;
 
-  /// No description provided for @register_emailHint.
+  /// No description provided for @signatureDrawSignature.
   ///
   /// In en, this message translates to:
-  /// **'you@company.com'**
-  String get register_emailHint;
-
-  /// No description provided for @register_phone.
-  ///
-  /// In en, this message translates to:
-  /// **'Phone Number'**
-  String get register_phone;
-
-  /// No description provided for @register_phoneHint.
-  ///
-  /// In en, this message translates to:
-  /// **'+20 100 000 0000'**
-  String get register_phoneHint;
-
-  /// No description provided for @register_country.
-  ///
-  /// In en, this message translates to:
-  /// **'Country'**
-  String get register_country;
-
-  /// No description provided for @register_countryHint.
-  ///
-  /// In en, this message translates to:
-  /// **'e.g. Egypt'**
-  String get register_countryHint;
-
-  /// No description provided for @register_industry.
-  ///
-  /// In en, this message translates to:
-  /// **'Industry'**
-  String get register_industry;
-
-  /// No description provided for @register_industryHint.
-  ///
-  /// In en, this message translates to:
-  /// **'e.g. Real Estate'**
-  String get register_industryHint;
-
-  /// No description provided for @register_optional.
-  ///
-  /// In en, this message translates to:
-  /// **'Optional'**
-  String get register_optional;
-
-  /// No description provided for @register_password.
-  ///
-  /// In en, this message translates to:
-  /// **'Password'**
-  String get register_password;
-
-  /// No description provided for @register_passwordHint.
-  ///
-  /// In en, this message translates to:
-  /// **'At least 8 characters'**
-  String get register_passwordHint;
-
-  /// No description provided for @register_confirmPassword.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm Password'**
-  String get register_confirmPassword;
-
-  /// No description provided for @register_submit.
-  ///
-  /// In en, this message translates to:
-  /// **'Send Request'**
-  String get register_submit;
-
-  /// No description provided for @register_sending.
-  ///
-  /// In en, this message translates to:
-  /// **'Sending your request…'**
-  String get register_sending;
-
-  /// No description provided for @register_haveAccount.
-  ///
-  /// In en, this message translates to:
-  /// **'Already have an account?'**
-  String get register_haveAccount;
-
-  /// No description provided for @register_signIn.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign in'**
-  String get register_signIn;
-
-  /// No description provided for @register_errFixFields.
-  ///
-  /// In en, this message translates to:
-  /// **'Please fix the highlighted fields and try again.'**
-  String get register_errFixFields;
-
-  /// No description provided for @register_errCompanyName.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter your company name'**
-  String get register_errCompanyName;
-
-  /// No description provided for @register_errContactPerson.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter the contact person\'s name'**
-  String get register_errContactPerson;
-
-  /// No description provided for @register_errEmail.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a valid email address'**
-  String get register_errEmail;
-
-  /// No description provided for @register_errPhone.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a valid phone number'**
-  String get register_errPhone;
-
-  /// No description provided for @register_errPassword.
-  ///
-  /// In en, this message translates to:
-  /// **'Password must be at least 8 characters'**
-  String get register_errPassword;
-
-  /// No description provided for @register_errConfirmPassword.
-  ///
-  /// In en, this message translates to:
-  /// **'Passwords don\'t match'**
-  String get register_errConfirmPassword;
-
-  /// No description provided for @register_successTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Request Sent Successfully'**
-  String get register_successTitle;
-
-  /// No description provided for @register_successBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Your registration request has been sent. An administrator will review it and you\'ll get an email as soon as your account is approved.'**
-  String get register_successBody;
-
-  /// No description provided for @register_successNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Reviews usually take 1–2 business days.'**
-  String get register_successNote;
-
-  /// No description provided for @register_successAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to Login'**
-  String get register_successAction;
+  /// **'Draw Signature'**
+  String get signatureDrawSignature;
 }
 
 class _AppLocalizationsDelegate

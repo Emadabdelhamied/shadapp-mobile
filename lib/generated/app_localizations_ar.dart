@@ -404,6 +404,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get serverError => 'خطأ في الخادم';
 
   @override
+  String get fileTooLarge => 'حجم الملف أكبر من المسموح به';
+
+  @override
   String get dataLoadFailed => 'فشل تحميل البيانات';
 
   @override
@@ -537,6 +540,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get meetingChipLabel => 'اجتماع';
+
+  @override
+  String get meetingChipRescheduled => 'تم تغيير الميعاد';
 
   @override
   String get passwordFieldLabel => 'كلمة المرور';
@@ -3292,6 +3298,19 @@ class AppLocalizationsAr extends AppLocalizations {
       'هل أنت متأكد من الموافقة على هذا العقد؟';
 
   @override
+  String get signatureRequiredTitle => 'التوقيع مطلوب';
+
+  @override
+  String get signatureRequiredMessage => 'لازم تحفظ توقيعك الأول قبل ما توافق.';
+
+  @override
+  String get signatureRequiredSubUserMessage =>
+      'الحساب الرئيسي لازم يحفظ التوقيع الأول.';
+
+  @override
+  String get signatureRequiredAction => 'توقيع الآن';
+
+  @override
   String get editReasonHint => 'اذكر سبب التعديل...';
 
   @override
@@ -3771,6 +3790,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get calendarApprovals => 'موافقات';
+
+  @override
+  String get calendarContract => 'عقد';
 
   @override
   String get calendarContractEndLegend => 'نهاية عقد';
@@ -4708,6 +4730,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentsMethodVodafoneCash => 'فودافون كاش';
 
   @override
+  String get paymentsMultiCurrencyContractHint =>
+      'العميل عنده عقود بأكتر من عملة، اختار العقد عشان نحدد العملة';
+
+  @override
   String get paymentsNoteHint => 'مثال: دفعة العقد الأول';
 
   @override
@@ -4785,6 +4811,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentsScheduleTitle => 'جدولة دفعات';
 
   @override
+  String get paymentsSelectContract => '-- اختر العقد --';
+
+  @override
   String get paymentsSendFailed => 'فشل إرسال الطلب';
 
   @override
@@ -4801,6 +4830,21 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get paymentsStatusScheduled => 'مجدول';
+
+  @override
+  String get paymentsStatusRejected => 'مرفوضة';
+
+  @override
+  String get paymentsRejectionReason => 'سبب الرفض';
+
+  @override
+  String get paymentsRejectionReasonOptional => 'سبب الرفض (اختياري)';
+
+  @override
+  String get paymentsRejectionReasonHint => 'اكتب سبب الرفض هنا...';
+
+  @override
+  String get paymentsReuploadProof => 'إعادة إرسال إثبات الدفع';
 
   @override
   String get paymentsTaxDetails => 'تفاصيل الضريبة';
@@ -4910,6 +4954,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get reportsWorkspaces => 'مساحات';
+
+  @override
+  String get saApprovalsApprovalLabel => 'موافقة';
+
+  @override
+  String saApprovalsApprovalPendingTitle(Object title) {
+    return 'في انتظار العميل — $title';
+  }
 
   @override
   String saApprovalsContractApprovalTitle(Object title) {
@@ -5252,9 +5304,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get amTotalClientsStat => 'إجمالي العملاء';
 
   @override
-  String get amTotalManagers => 'إجمالي المديرين';
-
-  @override
   String get approvalLoadFailed => 'فشل تحميل طلبات الموافقة';
 
   @override
@@ -5262,115 +5311,4 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get paymentsFailedToLoad => 'فشل تحميل المدفوعات';
-
-  @override
-  String get registerNow => 'سجّل الآن';
-
-  @override
-  String get register_title => 'إنشاء حساب';
-
-  @override
-  String get register_subtitle =>
-      'اكتب بيانات شركتك. فريقنا بيراجع كل طلب قبل تفعيل الحساب.';
-
-  @override
-  String get register_sectionCompany => 'الشركة';
-
-  @override
-  String get register_sectionContact => 'بيانات التواصل';
-
-  @override
-  String get register_sectionSecurity => 'الأمان';
-
-  @override
-  String get register_companyName => 'اسم الشركة';
-
-  @override
-  String get register_companyNameHint => 'مثال: شاد ميديا';
-
-  @override
-  String get register_contactPerson => 'الشخص المسؤول';
-
-  @override
-  String get register_contactPersonHint => 'الاسم بالكامل';
-
-  @override
-  String get register_emailHint => 'you@company.com';
-
-  @override
-  String get register_phone => 'رقم الهاتف';
-
-  @override
-  String get register_phoneHint => '+20 100 000 0000';
-
-  @override
-  String get register_country => 'الدولة';
-
-  @override
-  String get register_countryHint => 'مثال: مصر';
-
-  @override
-  String get register_industry => 'المجال';
-
-  @override
-  String get register_industryHint => 'مثال: العقارات';
-
-  @override
-  String get register_optional => 'اختياري';
-
-  @override
-  String get register_password => 'كلمة المرور';
-
-  @override
-  String get register_passwordHint => '8 أحرف على الأقل';
-
-  @override
-  String get register_confirmPassword => 'تأكيد كلمة المرور';
-
-  @override
-  String get register_submit => 'إرسال الطلب';
-
-  @override
-  String get register_sending => 'جاري إرسال طلبك…';
-
-  @override
-  String get register_haveAccount => 'عندك حساب بالفعل؟';
-
-  @override
-  String get register_signIn => 'تسجيل الدخول';
-
-  @override
-  String get register_errFixFields => 'من فضلك صحّح الحقول المظللة وحاول تاني.';
-
-  @override
-  String get register_errCompanyName => 'اكتب اسم الشركة';
-
-  @override
-  String get register_errContactPerson => 'اكتب اسم الشخص المسؤول';
-
-  @override
-  String get register_errEmail => 'اكتب بريد إلكتروني صحيح';
-
-  @override
-  String get register_errPhone => 'اكتب رقم هاتف صحيح';
-
-  @override
-  String get register_errPassword => 'كلمة المرور لازم تكون 8 أحرف على الأقل';
-
-  @override
-  String get register_errConfirmPassword => 'كلمتا المرور غير متطابقتين';
-
-  @override
-  String get register_successTitle => 'تم إرسال طلبك بنجاح';
-
-  @override
-  String get register_successBody =>
-      'تم إرسال طلب التسجيل. المسؤول هيراجع الطلب وهتوصلك رسالة على بريدك الإلكتروني أول ما يتم اعتماد الحساب.';
-
-  @override
-  String get register_successNote =>
-      'المراجعة بتاخد عادةً من يوم لـ يومين عمل.';
-
-  @override
-  String get register_successAction => 'الرجوع لتسجيل الدخول';
 }
