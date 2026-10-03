@@ -364,6 +364,11 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
       final su = data['sub_user'] as Map<String, dynamic>?;
       if (su != null) {
         _subUserPermissions = Map<String, dynamic>.from(su['permissions'] as Map? ?? {});
+        // subuser-review-plan.md م٦ — mirrored onto the ApiClient singleton so
+        // every embedded tab (ContractsPage, PaymentsPage, ChatPage, ...) can
+        // gate its own action buttons via `_api.canDo(key)` without needing a
+        // new prop threaded through the whole tree.
+        _api.subUserPermissions = _subUserPermissions;
       }
     } catch (e, s) {
       // Permissions stay at their (restrictive) defaults, which is the safe
@@ -495,7 +500,20 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
   Widget _buildDashboard() {
     final pages = <Widget>[
       ContractsPage(onGoToPayments: _goToPayments, refreshNotifier: _contractRefreshNotifier, api: _api),
-      PaymentsPage(initialPaymentId: _targetPaymentId, onTargetPaymentHandled: () => _targetPaymentId = null, paymentProvider: _childPaymentProvider, contractProvider: _childContractProvider, api: _api),
+      PaymentsPage(
+        initialPaymentId: _targetPaymentId,
+        // payments-fixes-2-plan.md ت١ — this used to mutate _targetPaymentId
+        // without setState, so this screen never rebuilt to actually pass
+        // initialPaymentId: null back down. PaymentsPage kept seeing the same
+        // old id on every subsequent build, and its own 30s refresh timer
+        // kept reopening the payment sheet for it indefinitely.
+        onTargetPaymentHandled: () {
+          if (mounted) setState(() => _targetPaymentId = null);
+        },
+        paymentProvider: _childPaymentProvider,
+        contractProvider: _childContractProvider,
+        api: _api,
+      ),
       ChatPage(onGoToPayments: _goToPayments, reverb: widget.reverb, enablePolling: widget.enablePolling, chatProvider: _childChatProvider, contractProvider: _childContractProvider, meetingProvider: _childMeetingProvider, api: _api),
       ApprovalsPage(workspaceId: _workspace?['id'] as int?, approvalProvider: _childApprovalProvider, api: _api),
       ClientFilesPage(fileProvider: _childFileProvider, api: _api, refreshNotifier: _fileRefreshNotifier),

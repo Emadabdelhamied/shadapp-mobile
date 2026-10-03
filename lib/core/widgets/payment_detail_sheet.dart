@@ -23,6 +23,9 @@ class PaymentDetailSheet extends StatelessWidget {
     final dueDate = payment['due_date']?.toString();
     final status = payment['status']?.toString() ?? 'scheduled';
     final notes = payment['notes']?.toString();
+    // payments-fixes-2-plan.md ت٢ — rejection_reason and notes are
+    // different things; stop falling back to notes as the reason.
+    final rejectionReason = payment['rejection_reason']?.toString();
 
     final statusInfo = _statusInfo(status, l10n);
 
@@ -74,6 +77,8 @@ class PaymentDetailSheet extends StatelessWidget {
           _row(l10n.paymentDetail_amount, '$amount $currency'),
           if (dueDate != null && dueDate.isNotEmpty) _row(l10n.paymentDetail_dueDate, _formatDate(dueDate)),
           if (notes != null && notes.isNotEmpty) _row(l10n.paymentDetail_notes, notes),
+          if (status == 'rejected' && rejectionReason != null && rejectionReason.isNotEmpty)
+            _row(l10n.paymentsRejectionReason, rejectionReason),
           if (showPayButton && status == 'scheduled') ...[
             const SizedBox(height: 16),
             SizedBox(

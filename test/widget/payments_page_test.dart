@@ -352,4 +352,192 @@ void main() {
     expect(sentBody!['currency'], 'EGP');
     expect(find.text('Payment request sent'), findsOneWidget);
   });
+
+  // payments-fixes-2-plan.md ت١ — a client taps a due payment from the chat,
+  // then "Pay" — this used to work, but the sheet kept reopening on its own
+  // every 30s afterward even after the client closed it, because
+  // onTargetPaymentHandled never actually rebuilt the tree with
+  // initialPaymentId: null (see client_dashboard_screen.dart) and _load()'s
+  // own 30s refresh re-triggered the open every time it ran regardless.
+  //
+  // A ValueNotifier stands in for the real screen's own state var
+  // (_targetPaymentId) — it's what onTargetPaymentHandled clears, and
+  // wrapping PaymentsPage in a ValueListenableBuilder means that clear
+  // actually reaches PaymentsPage as a new initialPaymentId: null the way a
+  // real setState in the parent would, instead of silently doing nothing.
+  Future<void> pumpTargetPayment(WidgetTester tester, dynamic api, ValueNotifier<int?> idNotifier) async {
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: ValueListenableBuilder<int?>(
+        valueListenable: idNotifier,
+        builder: (context, id, _) => PaymentsPage(
+          api: api,
+          paymentProvider: PaymentProvider(repository: PaymentRepository(api: api)),
+          contractProvider: ContractProvider(api: api),
+          initialPaymentId: id,
+          onTargetPaymentHandled: () => idNotifier.value = null,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('opens the scheduled-payment sheet for a payment set after the initial load', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.workspaceId = 5;
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+      final uri = inv.positionalArguments[0] as Uri;
+      if (uri.path.endsWith('/contracts')) return jsonResponse('{"contracts":[]}');
+      return jsonResponse(
+        '{"payments":[{"id":7,"amount":300,"currency":"SAR","status":"scheduled","requested_by_manager":true,'
+        '"installment_label":"Installment 2"}],"available_methods":["bank_transfer"],"tax_summary":null}',
+      );
+    });
+
+    final idNotifier = ValueNotifier<int?>(null);
+    await pumpTargetPayment(tester, api, idNotifier);
+    expect(find.text('Send Proof'), findsNothing);
+
+    idNotifier.value = 7;
+    await tester.pumpAndSettle();
+
+    expect(find.text('Send Proof'), findsOneWidget);
+  });
+
+  testWidgets('does not reopen the sheet on the next 30s refresh after it was closed', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.workspaceId = 5;
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+      final uri = inv.positionalArguments[0] as Uri;
+      if (uri.path.endsWith('/contracts')) return jsonResponse('{"contracts":[]}');
+      return jsonResponse(
+        '{"payments":[{"id":7,"amount":300,"currency":"SAR","status":"scheduled","requested_by_manager":true,'
+        '"installment_label":"Installment 2"}],"available_methods":["bank_transfer"],"tax_summary":null}',
+      );
+    });
+
+    final idNotifier = ValueNotifier<int?>(7);
+    await pumpTargetPayment(tester, api, idNotifier);
+    expect(find.text('Send Proof'), findsOneWidget);
+    // onTargetPaymentHandled fires as soon as the sheet is triggered to open
+    // (not on user action inside it), so the id is already cleared here —
+    // matching "closes it, meaning to pay later" from the plan's manual QA
+    // table just as much as "actually pays".
+    expect(idNotifier.value, isNull);
+
+    // Close the sheet without paying.
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.text('Send Proof'), findsNothing);
+
+    // The periodic refresh fires again; with the id already null this must
+    // not reopen the sheet. This is the exact scenario the bug report
+    // describes and must fail against the old code (which re-triggered the
+    // open from inside _load() on every refresh regardless of the id having
+    // "already been handled").
+    await tester.pump(const Duration(seconds: 31));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Send Proof'), findsNothing);
+  });
+
+  testWidgets('clears the target id without crashing when the payment is not in the list', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.workspaceId = 5;
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+      final uri = inv.positionalArguments[0] as Uri;
+      if (uri.path.endsWith('/contracts')) return jsonResponse('{"contracts":[]}');
+      return jsonResponse('{"payments":[],"available_methods":["bank_transfer"],"tax_summary":null}');
+    });
+
+    final idNotifier = ValueNotifier<int?>(99);
+    await pumpTargetPayment(tester, api, idNotifier);
+
+    expect(find.text('Send Proof'), findsNothing);
+    expect(idNotifier.value, isNull);
+  });
+
+  // subuser-review-plan.md م٦ — uploading/re-uploading a payment proof maps
+  // to can_upload_payment_proof.
+  group('sub-user action gating (م٦)', () {
+    testWidgets('hides the request-payment FAB when can_upload_payment_proof is missing', (tester) async {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.workspaceId = 5;
+      api.role = 'sub_user';
+      api.subUserPermissions = {};
+      when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+        final uri = inv.positionalArguments[0] as Uri;
+        if (uri.path.endsWith('/contracts')) return jsonResponse('{"contracts":[]}');
+        return jsonResponse('{"payments":[],"available_methods":["bank_transfer"],"tax_summary":null}');
+      });
+
+      await pumpPage(tester, api);
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+    });
+
+    testWidgets('shows the request-payment FAB when can_upload_payment_proof is granted', (tester) async {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.workspaceId = 5;
+      api.role = 'sub_user';
+      api.subUserPermissions = {'can_upload_payment_proof': true};
+      when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+        final uri = inv.positionalArguments[0] as Uri;
+        if (uri.path.endsWith('/contracts')) return jsonResponse('{"contracts":[]}');
+        return jsonResponse('{"payments":[],"available_methods":["bank_transfer"],"tax_summary":null}');
+      });
+
+      await pumpPage(tester, api);
+
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+    });
+
+    testWidgets('hides the re-upload button on a rejected payment when can_upload_payment_proof is missing', (tester) async {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.workspaceId = 5;
+      api.role = 'sub_user';
+      api.subUserPermissions = {};
+      when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+        final uri = inv.positionalArguments[0] as Uri;
+        if (uri.path.endsWith('/contracts')) return jsonResponse('{"contracts":[]}');
+        return jsonResponse(
+          '{"payments":[{"id":1,"amount":500,"currency":"SAR","status":"rejected","method_type":"bank_transfer","created_at":"2026-01-01T00:00:00Z"}],'
+          '"available_methods":["bank_transfer"],"tax_summary":null}',
+        );
+      });
+
+      await pumpPage(tester, api);
+
+      expect(find.text('Re-upload Payment Proof'), findsNothing);
+    });
+
+    testWidgets('hides the Pay Now button on a scheduled payment when can_upload_payment_proof is missing', (tester) async {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.workspaceId = 5;
+      api.role = 'sub_user';
+      api.subUserPermissions = {};
+      when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+        final uri = inv.positionalArguments[0] as Uri;
+        if (uri.path.endsWith('/contracts')) return jsonResponse('{"contracts":[]}');
+        return jsonResponse(
+          '{"payments":[{"id":9,"amount":300,"currency":"SAR","status":"scheduled","requested_by_manager":true,'
+          '"installment_label":"Installment 2"}],"available_methods":["bank_transfer"],"tax_summary":null}',
+        );
+      });
+
+      await pumpPage(tester, api);
+      await tester.tap(find.text('Installment 2').first);
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(ElevatedButton, 'Pay Now'), findsNothing);
+    });
+  });
 }

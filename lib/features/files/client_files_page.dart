@@ -197,14 +197,17 @@ class _ClientFilesPageState extends State<ClientFilesPage> {
           const SizedBox(height: 16),
         ],
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Expanded(child: Text(l10n.files_uploadedFiles, style: ShadTypography.sectionHeader, maxLines: 1, overflow: TextOverflow.ellipsis)),
-          TextButton.icon(
-            onPressed: _uploading ? null : _upload,
-            icon: _uploading
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.upload_file, size: 18),
-            label: Text(_uploading ? l10n.files_uploading : l10n.files_uploadFile),
-          ),
+          Text(l10n.files_uploadedFiles, style: ShadTypography.sectionHeader),
+          // subuser-review-plan.md م٦ — uploading a file maps to
+          // can_upload_files, per the plan's action table.
+          if (_api.canDo('can_upload_files'))
+            TextButton.icon(
+              onPressed: _uploading ? null : _upload,
+              icon: _uploading
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.upload_file, size: 18),
+              label: Text(_uploading ? l10n.files_uploading : l10n.files_uploadFile),
+            ),
         ]),
         const SizedBox(height: 8),
         if (_files.isEmpty && _paymentFiles.isEmpty)

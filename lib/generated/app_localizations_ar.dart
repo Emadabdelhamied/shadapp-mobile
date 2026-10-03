@@ -1130,6 +1130,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings_phone => 'رقم الهاتف';
 
   @override
+  String get settings_contactOwnerForEmail =>
+      'لتغيير الإيميل أو الباسورد تواصل مع صاحب الحساب';
+
+  @override
   String get settings_dateOfBirth => 'تاريخ الميلاد';
 
   @override
@@ -1295,6 +1299,28 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get subusers_noUsers => 'لا يوجد مستخدمون فرعيون';
+
+  @override
+  String get subusers_edit => 'تعديل';
+
+  @override
+  String get subusers_phone => 'رقم الهاتف';
+
+  @override
+  String get subusers_save => 'حفظ';
+
+  @override
+  String get subusers_setPassword => 'تعيين كلمة مرور جديدة';
+
+  @override
+  String get subusers_newPasswordHint => 'كلمة المرور الجديدة';
+
+  @override
+  String get subusers_passwordChanged =>
+      'تم تغيير كلمة المرور، وتم تسجيل خروج المستخدم من كل الأجهزة';
+
+  @override
+  String get subusers_passwordChangeFailed => 'فشل تغيير كلمة المرور';
 
   @override
   String subusers_permissionsCount(Object count) {
@@ -2682,6 +2708,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get onboarding_confirmPaymentMsg => 'يرجى رفع إثبات الدفع للمتابعة.';
 
   @override
+  String get onboarding_paymentRejectedTitle => 'تم رفض الدفعة السابقة';
+
+  @override
+  String get onboarding_paymentRejectedReason => 'سبب الرفض';
+
+  @override
+  String get onboarding_paymentRejectedRetry =>
+      'يرجى إعادة إرفاق إيصال دفع صحيح لإتمام تفعيل الحساب.';
+
+  @override
   String get onboarding_remainingAmount => 'المبلغ المتبقي';
 
   @override
@@ -2941,6 +2977,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get actionFailed => 'فشل تنفيذ الإجراء';
+
+  @override
+  String get subuserActionNeedsOwner =>
+      'الموافقة على الإجراء ده من صاحب الحساب أو مستخدم عنده الصلاحية';
 
   @override
   String get editRequestTitle => 'طلب تعديل';
