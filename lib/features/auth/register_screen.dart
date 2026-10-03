@@ -41,7 +41,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   final _companyController = TextEditingController();
   final _personController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _countryController = TextEditingController();
   final _industryController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -67,8 +66,8 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   void initState() {
     super.initState();
 
-    _cardController =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..forward();
+    _cardController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
+      ..forward();
     _cardFade = CurvedAnimation(parent: _cardController, curve: Curves.easeOut);
     _cardSlide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
         .animate(CurvedAnimation(parent: _cardController, curve: Curves.easeOutCubic));
@@ -89,7 +88,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     _companyController.dispose();
     _personController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _countryController.dispose();
     _industryController.dispose();
     _passwordController.dispose();
@@ -138,7 +136,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
       'company_name': _companyController.text.trim(),
       'contact_person': _personController.text.trim(),
       'email': _emailController.text.trim(),
-      'phone': _phoneController.text.trim(),
       if (_countryController.text.trim().isNotEmpty) 'country': _countryController.text.trim(),
       if (_industryController.text.trim().isNotEmpty) 'industry': _industryController.text.trim(),
       'password': _passwordController.text,
@@ -222,7 +219,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
               ),
             ),
           ),
-
           Positioned(
             top: -70,
             left: -50,
@@ -233,7 +229,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
             right: -40,
             child: _Blob(color: ShadColors.gold.withAlpha(20), size: 140),
           ),
-
           SafeArea(
             child: Column(
               children: [
@@ -349,12 +344,10 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                   ),
                 ),
                 const SizedBox(height: 22),
-
                 if (_error != null) ...[
                   _ErrorBanner(message: _error!),
                   const SizedBox(height: 16),
                 ],
-
                 _SectionLabel(text: l10n.register_sectionCompany),
                 const SizedBox(height: 12),
                 _buildField(
@@ -392,7 +385,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 22),
                 _SectionLabel(text: l10n.register_sectionContact),
                 const SizedBox(height: 12),
@@ -414,20 +406,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                   forceLtr: true,
                   validator: (v) => _emailValidator(v, l10n.register_errEmail),
                 ),
-                const SizedBox(height: 14),
-                _buildField(
-                  label: l10n.register_phone,
-                  hint: l10n.register_phoneHint,
-                  controller: _phoneController,
-                  icon: Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
-                  forceLtr: true,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-() ]')),
-                  ],
-                  validator: (v) => _phoneValidator(v, l10n.register_errPhone),
-                ),
-
                 const SizedBox(height: 22),
                 _SectionLabel(text: l10n.register_sectionSecurity),
                 const SizedBox(height: 12),
@@ -439,8 +417,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                   obscure: !_passwordVisible,
                   onToggleObscure: () => setState(() => _passwordVisible = !_passwordVisible),
                   forceLtr: true,
-                  validator: (v) =>
-                      (v ?? '').length >= 8 ? null : l10n.register_errPassword,
+                  validator: (v) => (v ?? '').length >= 8 ? null : l10n.register_errPassword,
                 ),
                 const SizedBox(height: 14),
                 _buildField(
@@ -456,7 +433,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                   validator: (v) =>
                       v == _passwordController.text ? null : l10n.register_errConfirmPassword,
                 ),
-
                 const SizedBox(height: 26),
                 _SubmitButton(
                   loading: _loading,
@@ -749,8 +725,8 @@ class _SuccessDialogState extends State<_SuccessDialog> with SingleTickerProvide
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 700))..forward();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 700))
+      ..forward();
     _scale = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0, 0.5, curve: Curves.easeOutBack),
