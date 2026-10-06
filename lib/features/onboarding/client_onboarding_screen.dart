@@ -326,6 +326,14 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
             onPressed: () => context.read<LocaleProvider>().toggle(),
             tooltip: AppLocalizations.of(context)!.onboarding_changeLanguage,
           ),
+          // Same gear as the dashboard's — without it a client still in
+          // onboarding had no way to reach Settings, and so no way to delete
+          // their account (App Store Guideline 5.1.1(v)).
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, size: 20),
+            onPressed: () => context.push('/settings'),
+            tooltip: AppLocalizations.of(context)!.settings_title,
+          ),
           IconButton(
             icon: const Icon(Icons.logout_rounded, size: 22),
             onPressed: _logout,

@@ -129,4 +129,27 @@ void main() {
     verify(() => httpClient.put(any(that: predicate<Uri>((u) => u.path.endsWith('/sub-users/3/profile'))),
         headers: any(named: 'headers'), body: any(named: 'body'))).called(1);
   });
+
+  // App Store Guideline 5.1.1(v) — the in-app deletion entry point has to
+  // be reachable; the flow itself is covered in delete_account_button_test.
+  testWidgets('client role: offers account deletion, warning that the team loses access too', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.role = 'client';
+    api.userId = 9;
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer(
+      (_) async => jsonResponse('{"client":{"id":9,"contact_person":"Sara"}}'),
+    );
+    final provider = SettingsProvider(repository: SettingsRepository(api: api));
+
+    await pumpPage(tester, provider, api);
+    final deleteButton = find.text('Delete account');
+    // .first is the page's ListView — every TextField brings a Scrollable too.
+    await tester.scrollUntilVisible(deleteButton, 200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(deleteButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete your account?'), findsOneWidget);
+    expect(find.text('Team members you added will lose access too.'), findsOneWidget);
+  });
 }

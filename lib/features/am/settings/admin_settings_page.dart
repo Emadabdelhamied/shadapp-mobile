@@ -13,6 +13,7 @@ import '../../../providers/signature_provider.dart';
 import '../../../providers/system_settings_provider.dart';
 import 'admin_settings_clauses.dart';
 import '../../../core/widgets/signature_pad_screen.dart';
+import '../../settings/delete_account_button.dart';
 
 class AdminSettingsPage extends StatefulWidget {
   // Optional so this screen can be pumped in a widget test (e.g. embedded
@@ -729,6 +730,8 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
               onDelete: _deleteClause,
             ),
           ],
+          const SizedBox(height: 40),
+          DeleteAccountButton(authProvider: _authProvider),
           const SizedBox(height: 32),
         ],
       ),

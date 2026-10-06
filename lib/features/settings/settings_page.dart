@@ -6,14 +6,17 @@ import '../../core/api_client.dart';
 import '../../core/app_log.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/client_type_badge.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
+import 'delete_account_button.dart';
 
 class SettingsPage extends StatefulWidget {
   // Optional so this screen can be pumped in a widget test with a mocked
   // SettingsProvider instead of hitting the network.
   final SettingsProvider? settingsProvider;
+  final AuthProvider? authProvider;
   final ApiClient? api;
-  const SettingsPage({super.key, this.settingsProvider, this.api});
+  const SettingsPage({super.key, this.settingsProvider, this.authProvider, this.api});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -22,6 +25,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   late final ApiClient _api = widget.api ?? ApiClient();
   late final SettingsProvider _settingsProvider = widget.settingsProvider ?? SettingsProvider();
+  late final AuthProvider _authProvider = widget.authProvider ?? AuthProvider(api: _api);
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -251,6 +255,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   : Text(l10n.settings_save),
             ),
           ),
+          const SizedBox(height: 40),
+          DeleteAccountButton(
+            authProvider: _authProvider,
+            // Only the client owner has a team to take down with them.
+            warning: _isSubUser ? null : l10n.deleteAccount_teamWarning,
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );

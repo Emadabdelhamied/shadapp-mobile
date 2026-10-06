@@ -2348,6 +2348,66 @@ abstract class AppLocalizations {
   /// **'Failed to save settings'**
   String get settings_saveFailed;
 
+  /// No description provided for @deleteAccount_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccount_button;
+
+  /// No description provided for @deleteAccount_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete your account and the personal data linked to it.'**
+  String get deleteAccount_hint;
+
+  /// No description provided for @deleteAccount_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get deleteAccount_title;
+
+  /// No description provided for @deleteAccount_body.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes your account and the personal data linked to it, and signs you out on every device. This can\'t be undone.\n\nContracts, signatures and payment records may be kept for as long as the law requires, then deleted.'**
+  String get deleteAccount_body;
+
+  /// No description provided for @deleteAccount_teamWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Team members you added will lose access too.'**
+  String get deleteAccount_teamWarning;
+
+  /// No description provided for @deleteAccount_passwordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password to confirm'**
+  String get deleteAccount_passwordLabel;
+
+  /// No description provided for @deleteAccount_confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get deleteAccount_confirm;
+
+  /// No description provided for @deleteAccount_wrongPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect password'**
+  String get deleteAccount_wrongPassword;
+
+  /// No description provided for @deleteAccount_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete your account. Please try again.'**
+  String get deleteAccount_failed;
+
+  /// No description provided for @deleteAccount_done.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been deleted.'**
+  String get deleteAccount_done;
+
   /// No description provided for @signature_deleted.
   ///
   /// In en, this message translates to:

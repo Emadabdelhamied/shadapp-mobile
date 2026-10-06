@@ -306,9 +306,15 @@ class ApiClient {
         ));
   }
 
-  Future<Map<String, dynamic>> delete(String path) async {
+  /// [body] is optional and only used by account deletion (the password
+  /// re-check) — every other DELETE here identifies its target by path alone.
+  Future<Map<String, dynamic>> delete(String path, [Map<String, dynamic>? body]) async {
     final headers = await _headers();
-    return _send(() => _httpClient.delete(Uri.parse('$baseUrl$path'), headers: headers));
+    return _send(() => _httpClient.delete(
+          Uri.parse('$baseUrl$path'),
+          headers: headers,
+          body: body != null ? jsonEncode(body) : null,
+        ));
   }
 
   /// Sends a POST with a `_method=PUT` field rather than a real multipart

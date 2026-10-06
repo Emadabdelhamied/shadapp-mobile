@@ -150,10 +150,11 @@ Connect → App Review Information you **must**:
 
 Other likely review questions:
 
-- **Account deletion** (Guideline 5.1.1(v)) applies to apps that support account
-  *creation*. This app does not, so it is defensible — but be ready to say so in
-  Notes, and point to the support contact for deletion requests. If Apple pushes
-  back, the fix is an in-app "delete my account" action in Settings.
+- **Account deletion** (Guideline 5.1.1(v)): Apple did push back, because the
+  login screen links to the sign-up form. Every role can now delete their
+  account from Settings → *Delete account*. That needs the backend's
+  `DELETE /auth/account` to be deployed, and App Review wants a physical-device
+  recording of the flow. See `docs/account-deletion.md`.
 - **Location**: `NSLocationWhenInUseUsageDescription` is set and the check-in
   flow is clearly tied to it. Make sure the demo account can reach that screen.
 - **Payments**: the app handles contract/invoice payments between a business and

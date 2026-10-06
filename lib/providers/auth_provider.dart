@@ -198,6 +198,30 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> requestClientPasswordReset(String email) => _api.post('/auth/client/forgot-password', {'email': email});
 
+  /// Permanently deletes the signed-in account — App Store Guideline
+  /// 5.1.1(v). One endpoint for staff, client and sub_user alike: the backend
+  /// resolves which account from the token. The password is re-checked
+  /// server-side so an unlocked phone alone isn't enough to wipe an account.
+  ///
+  /// The backend must answer a wrong password with 422 (`errors.password`),
+  /// never 401 — a 401 goes through ApiClient's session-expired path, which
+  /// clears the token and bounces the app to /login mid-dialog.
+  ///
+  /// Exceptions are rethrown untouched so the caller can tell a wrong
+  /// password from a connection failure. The local session is only cleared
+  /// on success; there's no /auth/logout or FCM unregister call like
+  /// [logout] makes, because the deletion itself revokes every token and
+  /// push registration the account had.
+  Future<void> deleteAccount(String password) async {
+    await _api.delete('/auth/account', {'password': password});
+    await _api.clearToken();
+    _isLoggedIn = false;
+    _role = null;
+    _userName = null;
+    _error = null;
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     // plans/notifications-badges-toasts-plan.md ن1 — without this, the
     // device's FCM token stayed registered to this account after logout, so

@@ -1169,6 +1169,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_saveFailed => 'Failed to save settings';
 
   @override
+  String get deleteAccount_button => 'Delete account';
+
+  @override
+  String get deleteAccount_hint =>
+      'Permanently delete your account and the personal data linked to it.';
+
+  @override
+  String get deleteAccount_title => 'Delete your account?';
+
+  @override
+  String get deleteAccount_body =>
+      'This permanently deletes your account and the personal data linked to it, and signs you out on every device. This can\'t be undone.\n\nContracts, signatures and payment records may be kept for as long as the law requires, then deleted.';
+
+  @override
+  String get deleteAccount_teamWarning =>
+      'Team members you added will lose access too.';
+
+  @override
+  String get deleteAccount_passwordLabel => 'Enter your password to confirm';
+
+  @override
+  String get deleteAccount_confirm => 'Delete permanently';
+
+  @override
+  String get deleteAccount_wrongPassword => 'Incorrect password';
+
+  @override
+  String get deleteAccount_failed =>
+      'Couldn\'t delete your account. Please try again.';
+
+  @override
+  String get deleteAccount_done => 'Your account has been deleted.';
+
+  @override
   String get signature_deleted => 'Signature deleted';
 
   @override

@@ -1167,6 +1167,39 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings_saveFailed => 'فشل حفظ الإعدادات';
 
   @override
+  String get deleteAccount_button => 'حذف الحساب';
+
+  @override
+  String get deleteAccount_hint =>
+      'احذف حسابك والبيانات الشخصية المرتبطة به نهائيًا.';
+
+  @override
+  String get deleteAccount_title => 'حذف حسابك؟';
+
+  @override
+  String get deleteAccount_body =>
+      'سيتم حذف حسابك والبيانات الشخصية المرتبطة به نهائيًا، وتسجيل خروجك من جميع الأجهزة. لا يمكن التراجع عن هذا الإجراء.\n\nقد نحتفظ بالعقود والتوقيعات وسجلات الدفع للمدة التي يفرضها القانون، ثم يتم حذفها.';
+
+  @override
+  String get deleteAccount_teamWarning =>
+      'سيفقد أعضاء الفريق الذين أضفتهم صلاحية الدخول أيضًا.';
+
+  @override
+  String get deleteAccount_passwordLabel => 'أدخل كلمة المرور للتأكيد';
+
+  @override
+  String get deleteAccount_confirm => 'حذف نهائي';
+
+  @override
+  String get deleteAccount_wrongPassword => 'كلمة المرور غير صحيحة';
+
+  @override
+  String get deleteAccount_failed => 'تعذّر حذف الحساب. حاول مرة أخرى.';
+
+  @override
+  String get deleteAccount_done => 'تم حذف حسابك.';
+
+  @override
   String get signature_deleted => 'تم حذف التوقيع';
 
   @override

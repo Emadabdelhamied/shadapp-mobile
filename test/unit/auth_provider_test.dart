@@ -254,6 +254,37 @@ void main() {
     });
   });
 
+  group('deleteAccount', () {
+    test('sends DELETE /auth/account with the password, then clears the session', () async {
+      when(() => httpClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body')))
+          .thenAnswer((_) async => jsonResponse('{"token":"tok-1","user":{"id":1,"name":"Ahmed","role":"account_manager"}}'));
+      await provider.login('a@a.com', 'secret');
+      when(() => httpClient.delete(any(), headers: any(named: 'headers'), body: any(named: 'body')))
+          .thenAnswer((_) async => jsonResponse('', 204));
+
+      await provider.deleteAccount('secret');
+
+      final captured = verify(() => httpClient.delete(
+            any(that: predicate<Uri>((u) => u.path == '/auth/account')),
+            headers: any(named: 'headers'),
+            body: captureAny(named: 'body'),
+          )).captured;
+      expect(jsonDecode(captured.single as String), {'password': 'secret'});
+      expect(provider.isLoggedIn, isFalse);
+      expect(provider.role, isNull);
+      expect(await api.getToken(), isNull);
+    });
+
+    test('a wrong password rethrows the 422 and keeps the session', () async {
+      when(() => httpClient.delete(any(), headers: any(named: 'headers'), body: any(named: 'body'))).thenAnswer(
+          (_) async => jsonResponse('{"message":"The password is incorrect.","errors":{"password":["The password is incorrect."]}}', 422));
+
+      await expectLater(provider.deleteAccount('wrong'), throwsA(isA<ValidationException>()));
+
+      expect(await api.getToken(), 'test-token');
+    });
+  });
+
   // plans/notifications-badges-toasts-plan.md ن1 — a freshly logged-in user
   // used to get no push notifications until the app was fully closed and
   // reopened, since NotificationService.init()'s own registration attempt
