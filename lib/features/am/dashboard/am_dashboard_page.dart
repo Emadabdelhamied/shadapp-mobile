@@ -57,7 +57,15 @@ class AmDashboardPage extends StatefulWidget {
   // which falls back to a real DashboardStatsProvider built from `_api`.
   final DashboardStatsProvider? dashboardStatsProvider;
   final MeetingProvider? meetingProvider;
-  const AmDashboardPage({super.key, this.enablePolling = true, this.reverb, this.api, this.notificationProvider, this.dashboardProvider, this.dashboardStatsProvider, this.meetingProvider});
+  const AmDashboardPage(
+      {super.key,
+      this.enablePolling = true,
+      this.reverb,
+      this.api,
+      this.notificationProvider,
+      this.dashboardProvider,
+      this.dashboardStatsProvider,
+      this.meetingProvider});
 
   @override
   State<AmDashboardPage> createState() => _AmDashboardPageState();
@@ -71,6 +79,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   // that same singleton) but makes this field controllable from a test via
   // widget.api, rather than requiring the test to mutate the real singleton.
   late final _isSA = _api.role == 'super_admin';
+  late final _isAssistant = _api.role == 'manager_assistant';
   // Derived from `_api` purely to break the singleton fallback in the four
   // tab screens embedded below via IndexedStack (which mounts every tab
   // eagerly, not just the selected one) — each already accepts these same
@@ -82,13 +91,16 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   late final ManagerProvider _childManagerProvider =
       ManagerProvider(repository: ManagerRepository(api: _api));
   late final ContractProvider _childContractProvider = ContractProvider(api: _api);
-  late final PaymentProvider _childPaymentProvider = PaymentProvider(repository: PaymentRepository(api: _api));
-  late final NotificationProvider _notificationProvider =
-      widget.notificationProvider ?? NotificationProvider(repository: NotificationRepository(api: _api));
-  late final DashboardProvider _dashboardProvider = widget.dashboardProvider ?? DashboardProvider(repository: DashboardRepository(api: _api));
-  late final DashboardStatsProvider _dashboardStatsProvider =
-      widget.dashboardStatsProvider ?? DashboardStatsProvider(repository: DashboardStatsRepository(api: _api));
-  late final MeetingProvider _meetingProvider = widget.meetingProvider ?? MeetingProvider(repository: MeetingRepository(api: _api));
+  late final PaymentProvider _childPaymentProvider =
+      PaymentProvider(repository: PaymentRepository(api: _api));
+  late final NotificationProvider _notificationProvider = widget.notificationProvider ??
+      NotificationProvider(repository: NotificationRepository(api: _api));
+  late final DashboardProvider _dashboardProvider =
+      widget.dashboardProvider ?? DashboardProvider(repository: DashboardRepository(api: _api));
+  late final DashboardStatsProvider _dashboardStatsProvider = widget.dashboardStatsProvider ??
+      DashboardStatsProvider(repository: DashboardStatsRepository(api: _api));
+  late final MeetingProvider _meetingProvider =
+      widget.meetingProvider ?? MeetingProvider(repository: MeetingRepository(api: _api));
   List<dynamic> _allClients = [];
   List<dynamic> _allManagers = [];
   List<dynamic> _pendingPayments = [];
@@ -150,6 +162,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    await _api.refreshAssistantPermissions();
     try {
       if (_isSA) {
         _allManagers = await _childManagerProvider.fetchAllManagersRaw();
@@ -177,12 +190,15 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
           _allContracts = [];
         }
         _pendingContracts = _derivePendingContracts(_allContracts);
-        try {
-          final pData = await _childPaymentProvider.fetchPendingRaw();
-          _pendingPayments = safeList(pData['payments']);
-        } catch (e, s) {
-          AppLog.error('am_dashboard._load(pendingPayments)', e, s);
-          _pendingPayments = [];
+        // Assistants never see money — the endpoint refuses them.
+        if (!_isAssistant) {
+          try {
+            final pData = await _childPaymentProvider.fetchPendingRaw();
+            _pendingPayments = safeList(pData['payments']);
+          } catch (e, s) {
+            AppLog.error('am_dashboard._load(pendingPayments)', e, s);
+            _pendingPayments = [];
+          }
         }
       }
       // 24 Sept 2026 (server-side-stats-plan.md, Stage 3) — one request for
@@ -294,18 +310,17 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     return contracts
         .where((c) => c is Map && pendingStatuses.contains(c['status']))
         .map<Map<String, dynamic>>((c) {
-          final ws = c['workspace'] as Map<String, dynamic>?;
-          final client = ws?['client'] as Map<String, dynamic>?;
-          return {
-            'title': c['title'] ?? '',
-            'value': c['value'] ?? 0,
-            'currency': c['currency'] ?? 'SAR',
-            'company': client?['company_name'] ?? '',
-            'client': client,
-            'workspace_id': ws?['id'],
-          };
-        })
-        .toList();
+      final ws = c['workspace'] as Map<String, dynamic>?;
+      final client = ws?['client'] as Map<String, dynamic>?;
+      return {
+        'title': c['title'] ?? '',
+        'value': c['value'] ?? 0,
+        'currency': c['currency'] ?? 'SAR',
+        'company': client?['company_name'] ?? '',
+        'client': client,
+        'workspace_id': ws?['id'],
+      };
+    }).toList();
   }
 
   void _createMeeting() {
@@ -368,24 +383,27 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
             // carries a logo plus three actions — let the greeting ellipsize
             // rather than push them off the bar.
             Flexible(
-              child: Text.rich(maxLines: 1, overflow: TextOverflow.ellipsis, TextSpan(children: [
-              TextSpan(
-                text: _isSA ? '' : 'Welcome, ',
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    fontFamily: 'Tajawal',
-                    color: Colors.white70),
-              ),
-              TextSpan(
-                text: _isSA ? 'Admin' : _api.userName ?? '',
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Tajawal',
-                    color: ShadColors.gold),
-              ),
-            ])),
+              child: Text.rich(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  TextSpan(children: [
+                    TextSpan(
+                      text: _isSA ? '' : 'Welcome, ',
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          fontFamily: 'Tajawal',
+                          color: Colors.white70),
+                    ),
+                    TextSpan(
+                      text: _isSA ? 'Admin' : _api.userName ?? '',
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Tajawal',
+                          color: ShadColors.gold),
+                    ),
+                  ])),
             ),
           ],
         ),
@@ -409,10 +427,13 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
                 top: 6,
                 child: Container(
                   padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(color: ShadColors.crimson, shape: BoxShape.circle),
+                  decoration:
+                      const BoxDecoration(color: ShadColors.crimson, shape: BoxShape.circle),
                   // ن12 — capped at 99+ like every other tab badge in this
                   // app; this one was left uncapped.
-                  child: Text(_unreadNotifs > 99 ? '99+' : '$_unreadNotifs', style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: Text(_unreadNotifs > 99 ? '99+' : '$_unreadNotifs',
+                      style: const TextStyle(
+                          fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
           ]),
@@ -427,53 +448,56 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : IndexedStack(
-              index: _selectedIndex,
-              children: _isSA
-                ? [
-                    buildHomeTab(
-                      context: context,
-                      allManagers: _allManagers,
-                      pendingContracts: _pendingContracts,
-                      pendingPayments: _pendingPayments,
-                      api: _api,
-                      onSelectTab: (i) => setState(() => _selectedIndex = i),
-                      onShowAllMeetings: _showAllMeetings,
-                      onManagerTap: _showManagerClients,
-                      load: _load,
-                      clientsTotal: _statInt('clients', 'total'),
-                      contractsActive: _statInt('contracts', 'active'),
-                      paymentsPending: _statInt('payments', 'pending'),
-                      approvalsTotal: _statInt('approvals', 'total'),
-                    ),
-                    SaApprovalsPage(dashboardStatsProvider: _dashboardStatsProvider),
-                    SaClientsPage(clientProvider: _childClientProvider, managerProvider: _childManagerProvider, api: _api),
-                    SaTeamPage(managerProvider: _childManagerProvider, api: _api),
-                    AdminSettingsPage(api: _api),
-                  ]
-                : [
-                    buildAmHomeTab(
-                      context: context,
-                      allClients: _allClients,
-                      pendingContracts: _pendingContracts,
-                      pendingPayments: _pendingPayments,
-                      isSA: _isSA,
-                      api: _api,
-                      onSelectTab: (i) => setState(() => _selectedIndex = i),
-                      onShowAllMeetings: _showAllMeetings,
-                      onOpenClient: _openClient,
-                      load: _load,
-                      clientsTotal: _statInt('clients', 'total'),
-                      contractsActive: _statInt('contracts', 'active'),
-                      paymentsPending: _statInt('payments', 'pending'),
-                      approvalsTotal: _statInt('approvals', 'total'),
-                    ),
-                    SaApprovalsPage(dashboardStatsProvider: _dashboardStatsProvider),
-                    _buildAmClientsTab(),
-                    AdminSettingsPage(api: _api),
-                  ],
-            ),
+            ? const Center(child: CircularProgressIndicator())
+            : IndexedStack(
+                index: _selectedIndex,
+                children: _isSA
+                    ? [
+                        buildHomeTab(
+                          context: context,
+                          allManagers: _allManagers,
+                          pendingContracts: _pendingContracts,
+                          pendingPayments: _pendingPayments,
+                          api: _api,
+                          onSelectTab: (i) => setState(() => _selectedIndex = i),
+                          onShowAllMeetings: _showAllMeetings,
+                          onManagerTap: _showManagerClients,
+                          load: _load,
+                          clientsTotal: _statInt('clients', 'total'),
+                          contractsActive: _statInt('contracts', 'active'),
+                          paymentsPending: _statInt('payments', 'pending'),
+                          approvalsTotal: _statInt('approvals', 'total'),
+                        ),
+                        SaApprovalsPage(dashboardStatsProvider: _dashboardStatsProvider),
+                        SaClientsPage(
+                            clientProvider: _childClientProvider,
+                            managerProvider: _childManagerProvider,
+                            api: _api),
+                        SaTeamPage(managerProvider: _childManagerProvider, api: _api),
+                        AdminSettingsPage(api: _api),
+                      ]
+                    : [
+                        buildAmHomeTab(
+                          context: context,
+                          allClients: _allClients,
+                          pendingContracts: _pendingContracts,
+                          pendingPayments: _pendingPayments,
+                          isSA: _isSA,
+                          api: _api,
+                          onSelectTab: (i) => setState(() => _selectedIndex = i),
+                          onShowAllMeetings: _showAllMeetings,
+                          onOpenClient: _openClient,
+                          load: _load,
+                          clientsTotal: _statInt('clients', 'total'),
+                          contractsActive: _statInt('contracts', 'active'),
+                          paymentsPending: _statInt('payments', 'pending'),
+                          approvalsTotal: _statInt('approvals', 'total'),
+                        ),
+                        SaApprovalsPage(dashboardStatsProvider: _dashboardStatsProvider),
+                        _buildAmClientsTab(),
+                        AdminSettingsPage(api: _api),
+                      ],
+              ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
@@ -594,18 +618,20 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
             clientProvider: _childClientProvider,
             managerProvider: _childManagerProvider,
             api: _api),
-        Positioned(
-          bottom: 16,
-          left: 16,
-          child: FloatingActionButton(
-            onPressed: () async {
-              final created = await context.push<bool>('/am/clients/create');
-              if (created == true) _load();
-            },
-            backgroundColor: ShadColors.gold,
-            child: const Icon(Icons.person_add, color: Colors.black),
+        // Creating clients is the manager's job, not an assistant's.
+        if (!_isAssistant)
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: FloatingActionButton(
+              onPressed: () async {
+                final created = await context.push<bool>('/am/clients/create');
+                if (created == true) _load();
+              },
+              backgroundColor: ShadColors.gold,
+              child: const Icon(Icons.person_add, color: Colors.black),
+            ),
           ),
-        ),
       ],
     );
   }

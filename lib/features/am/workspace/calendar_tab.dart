@@ -109,8 +109,9 @@ class _CalendarTabState extends State<CalendarTab> {
       }
     }
 
-    await _paymentProvider.fetchForWorkspace(wsId);
-    for (final p in _paymentProvider.payments) {
+    // Assistants never see money — the endpoint refuses them anyway.
+    if (!_api.isAssistant) await _paymentProvider.fetchForWorkspace(wsId);
+    for (final p in (_api.isAssistant ? const [] : _paymentProvider.payments)) {
       if (p['created_at'] != null) {
         _events.add({
           'id': p['id'],

@@ -372,6 +372,7 @@ class _ContractsTabState extends State<ContractsTab> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isSA = _api.role == 'super_admin';
+    final canManage = _api.canDo('can_manage_contracts');
     final Map<String, List<String>> actionsForStatus = {
       'draft': ['send'],
       'edit_requested': ['send'],
@@ -397,6 +398,7 @@ class _ContractsTabState extends State<ContractsTab> {
               final rawActions = actionsForStatus[c['status']] ?? [];
               final actions = rawActions.where((a) {
                 if (isSA) return a == 'company-approve' || a == 'complete';
+                if (!canManage) return false;
                 return a != 'company-approve';
               }).toList();
               final editable = c['status'] == 'draft' || c['status'] == 'edit_requested';
@@ -515,7 +517,7 @@ class _ContractsTabState extends State<ContractsTab> {
             },
           ),
         ),
-      if (_api.role != 'super_admin')
+      if (_api.role != 'super_admin' && canManage)
         Positioned(
           bottom: 16,
           left: 16,

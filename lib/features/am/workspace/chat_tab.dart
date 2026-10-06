@@ -310,7 +310,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                   });
                 },
               ),
-            if (!alreadyRequested && !isSA)
+            if (!alreadyRequested && !isSA && _api.canDo('can_manage_approvals'))
               ListTile(
                 leading: const Icon(Icons.how_to_reg, color: ShadColors.primary),
                 title: Text(l10n.chatRequestClientApproval),
@@ -607,8 +607,8 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
             Text(l10n.chatReadOnly, style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
           ]),
         ),
-      // Input Bar (AM only)
-      if (!isSA)
+      // Input Bar (AM, or an assistant with can_chat)
+      if (!isSA && _api.canDo('can_chat'))
         Container(
           decoration: const BoxDecoration(
             color: ShadColors.chatHeaderBg,

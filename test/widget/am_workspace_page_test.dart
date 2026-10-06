@@ -104,4 +104,32 @@ void main() {
     expect(find.text('Ali'), findsWidgets);
     expect(find.byIcon(Icons.keyboard_arrow_left), findsOneWidget);
   });
+  testWidgets('an assistant has no Payments tab and the rest still load', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.role = 'manager_assistant';
+    stubCommon(httpClient);
+
+    await pumpPage(tester, api);
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(AmWorkspacePage)))!;
+    expect(find.text(l10n.workspaceTabPayments), findsNothing);
+    expect(find.text(l10n.workspaceTabChat), findsOneWidget);
+    expect(find.text(l10n.workspaceTabContracts), findsOneWidget);
+    expect(find.text('Acme'), findsOneWidget);
+    // never asked the payments endpoint
+    verifyNever(() => httpClient.get(any(that: predicate<Uri>((u) => u.path == '/workspaces/5/payments')), headers: any(named: 'headers')));
+  });
+
+  testWidgets('a manager still has the Payments tab', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.role = 'account_manager';
+    stubCommon(httpClient);
+
+    await pumpPage(tester, api);
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(AmWorkspacePage)))!;
+    expect(find.text(l10n.workspaceTabPayments), findsOneWidget);
+  });
 }

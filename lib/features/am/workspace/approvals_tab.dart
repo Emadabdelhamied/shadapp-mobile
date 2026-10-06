@@ -138,6 +138,8 @@ class _ApprovalsTabState extends State<ApprovalsTab> {
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
     final isSA = _api.role == 'super_admin';
+    // SA is read-only; an assistant needs can_manage_approvals to write.
+    final canWrite = !isSA && _api.canDo('can_manage_approvals');
     final l10n = AppLocalizations.of(context)!;
 
     return RefreshIndicator(
@@ -145,7 +147,7 @@ class _ApprovalsTabState extends State<ApprovalsTab> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (!isSA)
+          if (canWrite)
             Card(
               margin: const EdgeInsets.only(bottom: 16),
               child: Padding(
@@ -347,7 +349,7 @@ class _ApprovalsTabState extends State<ApprovalsTab> {
                           ]),
                         ),
                       ],
-                      if (status == 'pending' && !isSA && a.requestedBy != _api.userId)
+                      if (status == 'pending' && canWrite && a.requestedBy != _api.userId)
                         Padding(
                           padding: const EdgeInsets.only(top: 12),
                           child: Row(children: [

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
+
 import '../../../core/api_client.dart';
 import '../../../core/app_log.dart';
+import '../../../core/reverb_service.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/client_type_badge.dart';
-import '../../../core/reverb_service.dart';
 import '../../../data/approval_repository.dart';
 import '../../../data/chat_repository.dart';
 import '../../../data/client_repository.dart';
@@ -18,14 +19,14 @@ import '../../../providers/contract_provider.dart';
 import '../../../providers/file_provider.dart';
 import '../../../providers/meeting_provider.dart';
 import '../../../providers/payment_provider.dart';
-import 'chat_tab.dart';
-import 'files_tab.dart';
-import 'calendar_tab.dart';
-import 'contracts_tab.dart';
-import 'payments_tab.dart';
 import 'approvals_tab.dart';
-import 'meetings_tab.dart';
+import 'calendar_tab.dart';
+import 'chat_tab.dart';
 import 'client_profile_tab.dart';
+import 'contracts_tab.dart';
+import 'files_tab.dart';
+import 'meetings_tab.dart';
+import 'payments_tab.dart';
 
 class AmWorkspacePage extends StatefulWidget {
   final int? workspaceId;
@@ -41,7 +42,8 @@ class AmWorkspacePage extends StatefulWidget {
   // ApiClient instead of hitting the network. Defaults to the real
   // singleton — zero behavior change for every existing call site.
   final ApiClient? api;
-  const AmWorkspacePage({super.key, this.workspaceId, this.initialTabIndex = 0, this.reverb, this.api});
+  const AmWorkspacePage(
+      {super.key, this.workspaceId, this.initialTabIndex = 0, this.reverb, this.api});
 
   @override
   State<AmWorkspacePage> createState() => _AmWorkspacePageState();
@@ -58,11 +60,15 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
   // changes nothing.
   late final ChatProvider _childChatProvider = ChatProvider(repository: ChatRepository(api: _api));
   late final ContractProvider _childContractProvider = ContractProvider(api: _api);
-  late final MeetingProvider _childMeetingProvider = MeetingProvider(repository: MeetingRepository(api: _api));
+  late final MeetingProvider _childMeetingProvider =
+      MeetingProvider(repository: MeetingRepository(api: _api));
   late final FileProvider _childFileProvider = FileProvider(repository: FileRepository(api: _api));
-  late final PaymentProvider _childPaymentProvider = PaymentProvider(repository: PaymentRepository(api: _api));
-  late final ApprovalProvider _childApprovalProvider = ApprovalProvider(repository: ApprovalRepository(api: _api));
-  late final ClientProvider _childClientProvider = ClientProvider(repository: ClientRepository(api: _api));
+  late final PaymentProvider _childPaymentProvider =
+      PaymentProvider(repository: PaymentRepository(api: _api));
+  late final ApprovalProvider _childApprovalProvider =
+      ApprovalProvider(repository: ApprovalRepository(api: _api));
+  late final ClientProvider _childClientProvider =
+      ClientProvider(repository: ClientRepository(api: _api));
   String? _wsStatus;
   String? _wsContactPerson;
   String? _wsName;
@@ -70,10 +76,27 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
   String? _clientType;
   late final TabController _tabController;
 
+  bool get _isAssistant => _api.role == 'manager_assistant';
+  // 0 chat, 1 files, 2 contracts, 3 payments, 4 approvals, 5 meetings,
+  // 6 log (calendar), 7 client profile.
+  List<int> get _visibleTabs => [
+        for (var i = 0; i < 8; i++)
+          if (!(_isAssistant && i == 3)) i,
+      ];
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 8, vsync: this, initialIndex: widget.initialTabIndex.clamp(0, 7));
+    // Assistants never see money, so the Payments tab is left out for them.
+    // initialTabIndex still counts the full 8-tab layout (deep links and
+    // notification routing use it), so map it onto the visible list.
+    final fullIndex = widget.initialTabIndex.clamp(0, 7);
+    final visibleIndex = _isAssistant ? _visibleTabs.indexOf(fullIndex) : fullIndex;
+    _tabController = TabController(
+      length: _visibleTabs.length,
+      vsync: this,
+      initialIndex: visibleIndex < 0 ? 0 : visibleIndex,
+    );
     _tabController.addListener(_onTabChanged);
     _fetchWorkspace();
   }
@@ -129,9 +152,13 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
               CircleAvatar(
                 radius: 16,
                 backgroundColor: ShadColors.crimson.withAlpha(40),
-                backgroundImage: _clientAvatar != null && _clientAvatar!.isNotEmpty ? NetworkImage(_clientAvatar!) : null,
+                backgroundImage: _clientAvatar != null && _clientAvatar!.isNotEmpty
+                    ? NetworkImage(_clientAvatar!)
+                    : null,
                 child: _clientAvatar == null || _clientAvatar!.isEmpty
-                    ? Text((_wsContactPerson ?? '?').substring(0, 1), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ShadColors.crimson))
+                    ? Text((_wsContactPerson ?? '?').substring(0, 1),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700, color: ShadColors.crimson))
                     : null,
               ),
             ]),
@@ -139,25 +166,44 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Flexible(child: Text(_wsName ?? 'Workspace', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay'))),
+                  Flexible(
+                      child: Text(_wsName ?? 'Workspace',
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'PlayfairDisplay'))),
                   const SizedBox(width: 6),
                   ClientTypeBadge(clientType: _clientType, compact: true),
                 ]),
                 if (_wsContactPerson != null)
-                  Text(_wsContactPerson!, style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
+                  Text(_wsContactPerson!,
+                      style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
               ]),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
               decoration: BoxDecoration(
-                color: isActive ? ShadColors.success.withAlpha(25) : ShadColors.crimson.withAlpha(25),
+                color:
+                    isActive ? ShadColors.success.withAlpha(25) : ShadColors.crimson.withAlpha(25),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isActive ? ShadColors.success.withAlpha(80) : ShadColors.crimson.withAlpha(80)),
+                border: Border.all(
+                    color: isActive
+                        ? ShadColors.success.withAlpha(80)
+                        : ShadColors.crimson.withAlpha(80)),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 6, height: 6, decoration: BoxDecoration(color: isActive ? ShadColors.success : ShadColors.crimson, shape: BoxShape.circle)),
+                Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                        color: isActive ? ShadColors.success : ShadColors.crimson,
+                        shape: BoxShape.circle)),
                 const SizedBox(width: 4),
-                Text(isActive ? l10n.amStatusActive : l10n.amStatusInactive, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: isActive ? ShadColors.success : ShadColors.crimson)),
+                Text(isActive ? l10n.amStatusActive : l10n.amStatusInactive,
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: isActive ? ShadColors.success : ShadColors.crimson)),
               ]),
             ),
             const SizedBox(width: 8),
@@ -165,9 +211,14 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
               onTap: () => Navigator.pop(context),
               behavior: HitTestBehavior.opaque,
               child: Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(color: ShadColors.card, borderRadius: BorderRadius.circular(8), border: Border.all(color: ShadColors.cardBorder)),
-                child: const Icon(Icons.keyboard_arrow_left, size: 20, color: ShadColors.textSecondary),
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                    color: ShadColors.card,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: ShadColors.cardBorder)),
+                child: const Icon(Icons.keyboard_arrow_left,
+                    size: 20, color: ShadColors.textSecondary),
               ),
             ),
           ]),
@@ -195,14 +246,18 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
             unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             splashBorderRadius: BorderRadius.circular(8),
             tabs: [
-              _workspaceTab(Icons.chat_bubble_outline, l10n.workspaceTabChat),
-              _workspaceTab(Icons.folder_outlined, l10n.workspaceTabFiles),
-              _workspaceTab(Icons.description_outlined, l10n.workspaceTabContracts),
-              _workspaceTab(Icons.payments_outlined, l10n.workspaceTabPayments),
-              _workspaceTab(Icons.fact_check_outlined, l10n.workspaceTabApprovals),
-              _workspaceTab(Icons.event_outlined, l10n.workspaceTabMeetings),
-              _workspaceTab(Icons.history, l10n.workspaceTabLog),
-              _workspaceTab(Icons.person_outline, l10n.workspaceTabClientProfile),
+              for (final i in _visibleTabs)
+                Tab(
+                    text: [
+                  l10n.workspaceTabChat,
+                  l10n.workspaceTabFiles,
+                  l10n.workspaceTabContracts,
+                  l10n.workspaceTabPayments,
+                  l10n.workspaceTabApprovals,
+                  l10n.workspaceTabMeetings,
+                  l10n.workspaceTabLog,
+                  l10n.workspaceTabClientProfile,
+                ][i]),
             ],
           ),
         ),
@@ -220,17 +275,28 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
                 contractProvider: _childContractProvider,
                 meetingProvider: _childMeetingProvider,
               ),
-              FilesTab(workspaceId: widget.workspaceId, fileProvider: _childFileProvider, api: _api),
-              ContractsTab(workspaceId: widget.workspaceId, api: _api, contractProvider: _childContractProvider),
-              PaymentsTab(
-                onWorkspaceUpdate: _fetchWorkspace,
-                workspaceId: widget.workspaceId,
-                paymentProvider: _childPaymentProvider,
-                contractProvider: _childContractProvider,
-                api: _api,
-              ),
-              ApprovalsTab(workspaceId: widget.workspaceId, approvalProvider: _childApprovalProvider, api: _api),
-              MeetingsTab(workspaceId: widget.workspaceId, meetingProvider: _childMeetingProvider, contractProvider: _childContractProvider),
+              FilesTab(
+                  workspaceId: widget.workspaceId, fileProvider: _childFileProvider, api: _api),
+              ContractsTab(
+                  workspaceId: widget.workspaceId,
+                  api: _api,
+                  contractProvider: _childContractProvider),
+              if (!_isAssistant)
+                PaymentsTab(
+                  onWorkspaceUpdate: _fetchWorkspace,
+                  workspaceId: widget.workspaceId,
+                  paymentProvider: _childPaymentProvider,
+                  contractProvider: _childContractProvider,
+                  api: _api,
+                ),
+              ApprovalsTab(
+                  workspaceId: widget.workspaceId,
+                  approvalProvider: _childApprovalProvider,
+                  api: _api),
+              MeetingsTab(
+                  workspaceId: widget.workspaceId,
+                  meetingProvider: _childMeetingProvider,
+                  contractProvider: _childContractProvider),
               CalendarTab(
                 workspaceId: widget.workspaceId,
                 meetingProvider: _childMeetingProvider,
@@ -239,7 +305,11 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
                 approvalProvider: _childApprovalProvider,
                 api: _api,
               ),
-              ClientProfileTab(workspaceId: widget.workspaceId, clientProvider: _childClientProvider, contractProvider: _childContractProvider, api: _api),
+              ClientProfileTab(
+                  workspaceId: widget.workspaceId,
+                  clientProvider: _childClientProvider,
+                  contractProvider: _childContractProvider,
+                  api: _api),
             ],
           ),
         ),

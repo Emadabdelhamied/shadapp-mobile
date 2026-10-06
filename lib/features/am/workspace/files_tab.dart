@@ -194,7 +194,7 @@ class _FilesTabState extends State<FilesTab> {
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
     final isSA = _api.role == 'super_admin';
-    final canReview = isSA || _managersCanReviewFiles;
+    final canReview = isSA || (_managersCanReviewFiles && _api.canDo('can_review_files'));
     final filtered = _filteredFiles;
     final l10n = AppLocalizations.of(context)!;
 

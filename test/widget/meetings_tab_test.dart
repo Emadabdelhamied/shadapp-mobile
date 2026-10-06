@@ -142,6 +142,39 @@ void main() {
         headers: any(named: 'headers'), body: any(named: 'body'))).called(1);
   });
 
+  // 6 Oct 2026 — the form used to default to tomorrow 10:00 AM, so a manager
+  // who only changed the clock booked the meeting a day late.
+  testWidgets('a new meeting defaults to the next full hour, not tomorrow morning', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.role = 'account_manager';
+    when(() => httpClient.get(any(), headers: any(named: 'headers'))).thenAnswer((inv) async {
+      final uri = inv.positionalArguments[0] as Uri;
+      if (uri.path.endsWith('/contracts')) return jsonResponse('{"contracts":[]}');
+      return jsonResponse('{"meetings":[]}');
+    });
+    Map<String, dynamic>? sentBody;
+    when(() => httpClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body'))).thenAnswer((inv) async {
+      sentBody = jsonDecode(inv.namedArguments[#body] as String) as Map<String, dynamic>;
+      return jsonResponse('{}');
+    });
+    final meetingProvider = MeetingProvider(repository: MeetingRepository(api: api));
+    final contractProvider = ContractProvider(api: api);
+
+    final next = DateTime.now().add(const Duration(hours: 1));
+    final expected = DateTime(next.year, next.month, next.day, next.hour);
+
+    await pumpTab(tester, meetingProvider, contractProvider);
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Quick Sync');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Create Meeting'));
+    await tester.pumpAndSettle();
+
+    final sent = DateTime.parse(sentBody!['scheduled_at'] as String).toLocal();
+    expect(sent, expected);
+  });
+
   // 23 Sept 2026 — the Edit/Completed/Cancel row used to inherit the
   // app-wide OutlinedButtonThemeData padding (24px horizontal, sized for a
   // single full-width button), which left too little room for three

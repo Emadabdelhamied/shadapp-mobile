@@ -168,7 +168,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   Future<void> _saveProfile() async {
     setState(() => _saving = true);
     try {
-      final isAM = _api.role == 'account_manager';
+      final isAM = _api.role == 'account_manager' || _api.role == 'manager_assistant';
       final body = <String, dynamic>{'name': _nameController.text.trim()};
       if (!isAM) body['official_email'] = _emailController.text.trim();
       await _authProvider.updateProfileRaw(body);
@@ -372,7 +372,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    final isAM = _api.role == 'account_manager';
+    final isAM = _api.role == 'account_manager' || _api.role == 'manager_assistant';
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(

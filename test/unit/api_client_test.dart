@@ -61,6 +61,82 @@ void main() {
     });
   });
 
+  group('assistant permissions', () {
+    test('a manager or super admin is never limited by assistant permissions', () {
+      final api = buildClient();
+      api.role = 'account_manager';
+      expect(api.isAssistant, false);
+      expect(api.canDo('can_manage_contracts'), true);
+      api.role = 'super_admin';
+      expect(api.canDo('can_review_files'), true);
+    });
+
+    test('an assistant needs the flag, except can_view_clients which is always on', () {
+      final api = buildClient();
+      api.role = 'manager_assistant';
+      api.assistantPermissions = {'can_chat': true, 'can_manage_contracts': false};
+      expect(api.isAssistant, true);
+      expect(api.canDo('can_view_clients'), true);
+      expect(api.canDo('can_chat'), true);
+      expect(api.canDo('can_manage_contracts'), false);
+      expect(api.canDo('can_manage_meetings'), false);
+    });
+
+    test('an assistant with no stored permissions can do nothing but view clients', () {
+      final api = buildClient();
+      api.role = 'manager_assistant';
+      expect(api.canDo('can_edit_clients'), false);
+      expect(api.canDo('can_view_clients'), true);
+    });
+
+    test('setAssistantPermissions persists and init() reads them back', () async {
+      SharedPreferences.setMockInitialValues({'role': 'manager_assistant'});
+      final api = buildClient();
+      await api.setAssistantPermissions({'can_chat': true});
+      expect(api.assistantPermissions['can_chat'], true);
+
+      final fresh = buildClient();
+      await fresh.init();
+      expect(fresh.assistantPermissions['can_chat'], true);
+    });
+
+    test('clearToken forgets the permissions', () async {
+      final api = buildClient();
+      api.role = 'manager_assistant';
+      await api.setAssistantPermissions({'can_chat': true});
+      await api.clearToken();
+      expect(api.assistantPermissions, isEmpty);
+    });
+
+    test('refreshAssistantPermissions copies the current map from /auth/me', () async {
+      final api = buildClient();
+      api.role = 'manager_assistant';
+      api.assistantPermissions = {'can_chat': false};
+      when(() => client.get(any(), headers: any(named: 'headers'))).thenAnswer(
+        (_) async => http.Response('{"user":{"id":5,"assistant_permissions":{"can_chat":true,"can_view_files":true}}}', 200),
+      );
+      await api.refreshAssistantPermissions();
+      expect(api.canDo('can_chat'), true);
+      expect(api.canDo('can_view_files'), true);
+    });
+
+    test('refreshAssistantPermissions keeps the old map when the request fails', () async {
+      final api = buildClient();
+      api.role = 'manager_assistant';
+      api.assistantPermissions = {'can_chat': true};
+      when(() => client.get(any(), headers: any(named: 'headers'))).thenThrow(Exception('offline'));
+      await api.refreshAssistantPermissions();
+      expect(api.canDo('can_chat'), true);
+    });
+
+    test('refreshAssistantPermissions does not call the API for other roles', () async {
+      final api = buildClient();
+      api.role = 'account_manager';
+      await api.refreshAssistantPermissions();
+      verifyNever(() => client.get(any(), headers: any(named: 'headers')));
+    });
+  });
+
   group('get()', () {
     test('sends Accept and Authorization headers built from the stored token', () async {
       final api = buildClient(token: 'abc123');

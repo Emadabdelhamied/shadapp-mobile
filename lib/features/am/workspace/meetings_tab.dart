@@ -211,7 +211,7 @@ class _MeetingsTabState extends State<MeetingsTab> {
               ],
             ),
       ),
-      floatingActionButton: _api.role == 'super_admin'
+      floatingActionButton: (_api.role == 'super_admin' || !_api.canDo('can_manage_meetings'))
           ? null
           : FloatingActionButton(
               onPressed: _showCreateSheet,
@@ -351,7 +351,7 @@ class _MeetingsTabState extends State<MeetingsTab> {
               },
             ),
           ],
-          if (isScheduled && !isSA) ...[
+          if (isScheduled && !isSA && _api.canDo('can_manage_meetings')) ...[
             const SizedBox(height: 12),
             // 23 Sept 2026 — three buttons in equal Expanded thirds used to
             // inherit the app-wide OutlinedButtonThemeData padding (24px
@@ -421,8 +421,12 @@ class _CreateMeetingFormState extends State<_CreateMeetingForm> {
   late final ContractProvider _contractProvider = widget.contractProvider ?? ContractProvider();
   final _titleController = TextEditingController();
   final _notesController = TextEditingController();
-  DateTime _date = DateTime.now().add(const Duration(days: 1));
-  TimeOfDay _time = const TimeOfDay(hour: 10, minute: 0);
+  // Defaults to the next full hour from now (today, unless that rolls past
+  // midnight). It used to default to *tomorrow at 10:00 AM*: a manager who
+  // only changed the clock — say to 11:47, keeping the AM the default carried
+  // — silently booked the meeting for the next morning instead of tonight.
+  late DateTime _date;
+  late TimeOfDay _time;
   int _duration = 30;
   int? _selectedContractId;
   List<dynamic> _contracts = [];
@@ -432,6 +436,9 @@ class _CreateMeetingFormState extends State<_CreateMeetingForm> {
   @override
   void initState() {
     super.initState();
+    final next = DateTime.now().add(const Duration(hours: 1));
+    _date = DateTime(next.year, next.month, next.day);
+    _time = TimeOfDay(hour: next.hour, minute: 0);
     _loadContracts();
   }
 
@@ -527,7 +534,10 @@ class _CreateMeetingFormState extends State<_CreateMeetingForm> {
                 },
                 child: InputDecorator(
                   decoration: InputDecoration(labelText: l10n.amMeetingTime),
-                  child: Text('${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}'),
+                  // format() follows the device's 12/24h setting, so a
+                  // 12-hour phone shows AM/PM — "11:47" alone hid whether
+                  // the picker had kept AM.
+                  child: Text(_time.format(context)),
                 ),
               ),
             ),
@@ -600,7 +610,10 @@ class _EditMeetingFormState extends State<_EditMeetingForm> {
     _titleController = TextEditingController(text: m['title'] ?? '');
     _notesController = TextEditingController(text: m['notes'] ?? '');
     try {
-      _date = DateTime.parse(m['scheduled_at']);
+      // The API returns UTC ("...Z"). Without toLocal() the form showed the
+      // UTC clock time (3 hours early in Egypt) and saving then re-sent that
+      // hour with the local offset, moving the meeting on every edit.
+      _date = DateTime.parse(m['scheduled_at']).toLocal();
       _time = TimeOfDay(hour: _date.hour, minute: _date.minute);
       _date = DateTime(_date.year, _date.month, _date.day);
     } catch (_) {
@@ -688,7 +701,10 @@ class _EditMeetingFormState extends State<_EditMeetingForm> {
                 },
                 child: InputDecorator(
                   decoration: InputDecoration(labelText: l10n.amMeetingTime),
-                  child: Text('${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}'),
+                  // format() follows the device's 12/24h setting, so a
+                  // 12-hour phone shows AM/PM — "11:47" alone hid whether
+                  // the picker had kept AM.
+                  child: Text(_time.format(context)),
                 ),
               ),
             ),

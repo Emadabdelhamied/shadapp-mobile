@@ -50,9 +50,43 @@ class ApiClient {
   // (role != 'sub_user') is never restricted by it.
   Map<String, dynamic> subUserPermissions = {};
 
+  // Manager assistants (MANAGER_ASSISTANT_PLAN.md م٦): a staff user limited
+  // to one manager's clients, with the permissions that manager picked.
+  // Unlike sub-user permissions this IS persisted, so buttons are right on a
+  // cold start; it is refreshed from /auth/me on every dashboard load so a
+  // change by the manager shows up without a new login. The backend
+  // (assistant.can / not.assistant middleware) is the real gate.
+  Map<String, dynamic> assistantPermissions = {};
+
+  bool get isAssistant => role == 'manager_assistant';
+
   bool canDo(String key) {
+    if (isAssistant) {
+      if (key == 'can_view_clients') return true;
+      return assistantPermissions[key] == true;
+    }
     if (role != 'sub_user') return true;
     return subUserPermissions[key] == true;
+  }
+
+  Future<void> setAssistantPermissions(Map<String, dynamic>? perms) async {
+    assistantPermissions = Map<String, dynamic>.from(perms ?? {});
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('assistant_permissions', jsonEncode(assistantPermissions));
+  }
+
+  /// Re-reads the assistant's current permissions. No-op for everyone else;
+  /// on failure keeps what is stored (the API still enforces).
+  Future<void> refreshAssistantPermissions() async {
+    if (!isAssistant) return;
+    try {
+      final res = await get('/auth/me');
+      final user = res['user'] as Map<String, dynamic>?;
+      final perms = user?['assistant_permissions'];
+      if (perms is Map) await setAssistantPermissions(Map<String, dynamic>.from(perms));
+    } catch (e, s) {
+      AppLog.error('api_client.refreshAssistantPermissions', e, s);
+    }
   }
 
   final FlutterSecureStorage _secureStorage;
@@ -104,6 +138,14 @@ class ApiClient {
     workspaceId = prefs.getInt('workspace_id');
     userName = prefs.getString('user_name');
     avatarUrl = prefs.getString('avatar_url');
+    final rawPerms = prefs.getString('assistant_permissions');
+    if (rawPerms != null) {
+      try {
+        assistantPermissions = Map<String, dynamic>.from(jsonDecode(rawPerms) as Map);
+      } catch (_) {
+        assistantPermissions = {};
+      }
+    }
   }
 
   Future<void> setToken(String token) async {
@@ -125,6 +167,7 @@ class ApiClient {
     role = null;
     userName = null;
     avatarUrl = null;
+    assistantPermissions = {};
     await _secureStorage.delete(key: 'token');
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('role');
@@ -133,6 +176,7 @@ class ApiClient {
     await prefs.remove('workspace_id');
     await prefs.remove('user_name');
     await prefs.remove('avatar_url');
+    await prefs.remove('assistant_permissions');
   }
 
   Future<void> setRole(String value) async {

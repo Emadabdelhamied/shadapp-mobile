@@ -63,7 +63,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   String? _resolveRoute(String? role, String? workspaceId, String? clientId, String? type) {
-    final isAdmin = role == 'account_manager' || role == 'super_admin';
+    final isAdmin = role == 'account_manager' || role == 'super_admin' || role == 'manager_assistant';
     if (isAdmin && workspaceId != null && workspaceId.isNotEmpty) {
       // plans/notifications-badges-toasts-plan.md ن14 — this used to have
       // its own private _tabIndexForType(), which mapped 'workspace_*' types
