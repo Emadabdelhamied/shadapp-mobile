@@ -69,6 +69,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   // that same singleton) but makes this field controllable from a test via
   // widget.api, rather than requiring the test to mutate the real singleton.
   late final _isSA = _api.role == 'super_admin';
+  late final _isAssistant = _api.role == 'manager_assistant';
   // Derived from `_api` purely to break the singleton fallback in the four
   // tab screens embedded below via IndexedStack (which mounts every tab
   // eagerly, not just the selected one) — each already accepts these same
@@ -145,6 +146,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    await _api.refreshAssistantPermissions();
     try {
       if (_isSA) {
         _allManagers = await _childManagerProvider.fetchAllManagersRaw();
@@ -172,12 +174,15 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
           _allContracts = [];
         }
         _pendingContracts = _derivePendingContracts(_allContracts);
-        try {
-          final pData = await _childPaymentProvider.fetchPendingRaw();
-          _pendingPayments = safeList(pData['payments']);
-        } catch (e, s) {
-          AppLog.error('am_dashboard._load(pendingPayments)', e, s);
-          _pendingPayments = [];
+        // Assistants never see money — the endpoint refuses them.
+        if (!_isAssistant) {
+          try {
+            final pData = await _childPaymentProvider.fetchPendingRaw();
+            _pendingPayments = safeList(pData['payments']);
+          } catch (e, s) {
+            AppLog.error('am_dashboard._load(pendingPayments)', e, s);
+            _pendingPayments = [];
+          }
         }
       }
       // 24 Sept 2026 (server-side-stats-plan.md, Stage 3) — one request for
@@ -483,6 +488,8 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     return Stack(
       children: [
         SaClientsPage(clientProvider: _childClientProvider, managerProvider: _childManagerProvider, api: _api),
+        // Creating clients is the manager's job, not an assistant's.
+        if (!_isAssistant)
         Positioned(
           bottom: 16,
           left: 16,

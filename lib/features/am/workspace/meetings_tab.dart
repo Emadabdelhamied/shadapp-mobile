@@ -211,7 +211,7 @@ class _MeetingsTabState extends State<MeetingsTab> {
               ],
             ),
       ),
-      floatingActionButton: _api.role == 'super_admin'
+      floatingActionButton: (_api.role == 'super_admin' || !_api.canDo('can_manage_meetings'))
           ? null
           : FloatingActionButton(
               onPressed: _showCreateSheet,
@@ -342,7 +342,7 @@ class _MeetingsTabState extends State<MeetingsTab> {
               },
             ),
           ],
-          if (isScheduled && !isSA) ...[
+          if (isScheduled && !isSA && _api.canDo('can_manage_meetings')) ...[
             const SizedBox(height: 12),
             // 23 Sept 2026 — three buttons in equal Expanded thirds used to
             // inherit the app-wide OutlinedButtonThemeData padding (24px

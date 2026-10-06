@@ -70,10 +70,27 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
   String? _clientType;
   late final TabController _tabController;
 
+  bool get _isAssistant => _api.role == 'manager_assistant';
+  // 0 chat, 1 files, 2 contracts, 3 payments, 4 approvals, 5 meetings,
+  // 6 log (calendar), 7 client profile.
+  List<int> get _visibleTabs => [
+        for (var i = 0; i < 8; i++)
+          if (!(_isAssistant && i == 3)) i,
+      ];
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 8, vsync: this, initialIndex: widget.initialTabIndex.clamp(0, 7));
+    // Assistants never see money, so the Payments tab is left out for them.
+    // initialTabIndex still counts the full 8-tab layout (deep links and
+    // notification routing use it), so map it onto the visible list.
+    final fullIndex = widget.initialTabIndex.clamp(0, 7);
+    final visibleIndex = _isAssistant ? _visibleTabs.indexOf(fullIndex) : fullIndex;
+    _tabController = TabController(
+      length: _visibleTabs.length,
+      vsync: this,
+      initialIndex: visibleIndex < 0 ? 0 : visibleIndex,
+    );
     _tabController.addListener(_onTabChanged);
     _fetchWorkspace();
   }
@@ -180,14 +197,17 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
             labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
             unselectedLabelStyle: const TextStyle(fontSize: 11),
             tabs: [
-              Tab(text: l10n.workspaceTabChat),
-              Tab(text: l10n.workspaceTabFiles),
-              Tab(text: l10n.workspaceTabContracts),
-              Tab(text: l10n.workspaceTabPayments),
-              Tab(text: l10n.workspaceTabApprovals),
-              Tab(text: l10n.workspaceTabMeetings),
-              Tab(text: l10n.workspaceTabLog),
-              Tab(text: l10n.workspaceTabClientProfile),
+              for (final i in _visibleTabs)
+                Tab(text: [
+                  l10n.workspaceTabChat,
+                  l10n.workspaceTabFiles,
+                  l10n.workspaceTabContracts,
+                  l10n.workspaceTabPayments,
+                  l10n.workspaceTabApprovals,
+                  l10n.workspaceTabMeetings,
+                  l10n.workspaceTabLog,
+                  l10n.workspaceTabClientProfile,
+                ][i]),
             ],
           ),
         ),
@@ -207,13 +227,14 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
               ),
               FilesTab(workspaceId: widget.workspaceId, fileProvider: _childFileProvider, api: _api),
               ContractsTab(workspaceId: widget.workspaceId, api: _api, contractProvider: _childContractProvider),
-              PaymentsTab(
-                onWorkspaceUpdate: _fetchWorkspace,
-                workspaceId: widget.workspaceId,
-                paymentProvider: _childPaymentProvider,
-                contractProvider: _childContractProvider,
-                api: _api,
-              ),
+              if (!_isAssistant)
+                PaymentsTab(
+                  onWorkspaceUpdate: _fetchWorkspace,
+                  workspaceId: widget.workspaceId,
+                  paymentProvider: _childPaymentProvider,
+                  contractProvider: _childContractProvider,
+                  api: _api,
+                ),
               ApprovalsTab(workspaceId: widget.workspaceId, approvalProvider: _childApprovalProvider, api: _api),
               MeetingsTab(workspaceId: widget.workspaceId, meetingProvider: _childMeetingProvider, contractProvider: _childContractProvider),
               CalendarTab(

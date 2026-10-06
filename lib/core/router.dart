@@ -26,6 +26,9 @@ const _publicLocations = ['/login', '/forgot-password'];
 /// between client/sub_user and staff, so it's deliberately not gated here.
 bool _isStaffOnly(String location) => location.startsWith('/am/');
 
+const _assistantBlockedPrefixes = ['/am/reports', '/am/audit', '/am/managers', '/am/clients/create'];
+bool _isAssistantBlocked(String location) => _assistantBlockedPrefixes.any(location.startsWith);
+
 /// Resolves where a navigation to [location] should actually land, or
 /// `null` to let it proceed. Pulled out of `createRouter`'s `redirect:`
 /// callback as a plain function of (api, location) — no [BuildContext] or
@@ -59,6 +62,10 @@ Future<String?> resolveAuthRedirect(ApiClient api, String location) async {
   }
   if (_isStaffOnly(location) && (role == 'client' || role == 'sub_user')) {
     return '/dashboard';
+  }
+  // Manager assistants have no finance/reports/audit/managers screens.
+  if (role == 'manager_assistant' && _isAssistantBlocked(location)) {
+    return '/am/dashboard';
   }
   return null;
 }

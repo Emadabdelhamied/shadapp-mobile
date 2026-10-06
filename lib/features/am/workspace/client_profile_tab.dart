@@ -71,7 +71,7 @@ class _ClientProfileTabState extends State<ClientProfileTab> {
     if (mounted) setState(() => _loading = false);
   }
 
-  bool get _isAM => _api.role == 'account_manager';
+  bool get _isAM => _api.role == 'account_manager' || (_api.role == 'manager_assistant' && _api.canDo('can_edit_clients'));
 
   Future<void> _checkIn(AppLocalizations l10n) async {
     setState(() => _checkingIn = true);

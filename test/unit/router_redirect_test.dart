@@ -97,4 +97,30 @@ void main() {
       expect(await resolveAuthRedirect(api, '/am/workspace/7'), '/dashboard');
     });
   });
+  group('manager assistant', () {
+    test('goes to the staff dashboard from a public route', () async {
+      final api = buildClient(token: 't', role: 'manager_assistant');
+      expect(await resolveAuthRedirect(api, '/login'), '/am/dashboard');
+    });
+
+    test('can open the normal staff routes', () async {
+      final api = buildClient(token: 't', role: 'manager_assistant');
+      expect(await resolveAuthRedirect(api, '/am/dashboard'), null);
+      expect(await resolveAuthRedirect(api, '/am/workspace/7'), null);
+      expect(await resolveAuthRedirect(api, '/am/settings'), null);
+    });
+
+    test('is bounced from reports, audit, managers and client creation', () async {
+      final api = buildClient(token: 't', role: 'manager_assistant');
+      for (final path in ['/am/reports', '/am/audit-logs', '/am/managers', '/am/clients/create']) {
+        expect(await resolveAuthRedirect(api, path), '/am/dashboard', reason: path);
+      }
+    });
+
+    test('a manager is not bounced from those routes', () async {
+      final api = buildClient(token: 't', role: 'account_manager');
+      expect(await resolveAuthRedirect(api, '/am/reports'), null);
+      expect(await resolveAuthRedirect(api, '/am/clients/create'), null);
+    });
+  });
 }

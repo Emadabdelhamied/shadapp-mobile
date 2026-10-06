@@ -59,8 +59,11 @@ Widget buildAmHomeTab({
       ]),
       const SizedBox(height: 8),
       Row(children: [
-        Expanded(child: _homeStatCard(l10n.amStatPendingPayments, '$paymentsPending', Icons.payments, ShadColors.warning)),
-        const SizedBox(width: 8),
+        // Money is off-limits for manager assistants.
+        if (!api.isAssistant) ...[
+          Expanded(child: _homeStatCard(l10n.amStatPendingPayments, '$paymentsPending', Icons.payments, ShadColors.warning)),
+          const SizedBox(width: 8),
+        ],
         Expanded(child: _homeStatCard(l10n.amStatPendingApprovals, '$approvalsTotal', Icons.pending_actions, ShadColors.crimson)),
       ]),
       const SizedBox(height: 8),
@@ -411,7 +414,7 @@ Widget _buildEmptyState(BuildContext context, ApiClient api, Future<void> Functi
       const SizedBox(height: 8),
       Text(loc2.noClientsSubtitle, style: TextStyle(fontSize: 14, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
       const SizedBox(height: 24),
-      if (!isSA)
+      if (!isSA && !api.isAssistant)
         ElevatedButton.icon(
           onPressed: () async { final created = await context.push<bool>('/am/clients/create'); if (created == true) load(); },
           icon: const Icon(Icons.person_add, size: 18),

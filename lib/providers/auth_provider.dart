@@ -153,6 +153,9 @@ class AuthProvider extends ChangeNotifier {
         final role = user['role'] as String;
         await _api.setRole(role);
         await _api.setUserData(id: user['id'], name: user['name'], avatar: user['avatar_url'] as String?);
+        if (role == 'manager_assistant') {
+          await _api.setAssistantPermissions(user['assistant_permissions'] as Map<String, dynamic>?);
+        }
         _role = role;
         _userName = user['name'] as String?;
       }
