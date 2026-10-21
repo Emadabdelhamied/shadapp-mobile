@@ -1,5 +1,8 @@
 import 'package:go_router/go_router.dart';
+import 'package:shadapp_client/core/api_client.dart';
+import 'package:shadapp_client/features/am/reports/audit_log_page.dart';
 import 'package:shadapp_client/features/auth/register_screen.dart';
+import 'package:shadapp_client/features/signature/signature_page.dart';
 
 import '../features/am/clients/client_detail_page.dart';
 import '../features/am/clients/create_client_page.dart';
@@ -12,7 +15,6 @@ import '../features/am/reports/reports_page.dart';
 import '../features/am/settings/admin_settings_page.dart';
 import '../features/am/staff/my_team_page.dart';
 import '../features/am/staff/staff_page.dart';
-import '../features/am/workspace/am_workspace_page.dart';
 import '../features/am/workspace/am_workspace_page.dart';
 import '../features/auth/forgot_password_page.dart';
 import '../features/auth/login_page.dart';

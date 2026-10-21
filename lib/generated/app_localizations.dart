@@ -62,7 +62,8 @@ import 'app_localizations_en.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -91,7 +93,10 @@ abstract class AppLocalizations {
   ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('ar'), Locale('en')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('ar'),
+    Locale('en')
+  ];
 
   /// No description provided for @appTitle.
   ///
@@ -2354,66 +2359,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to save settings'**
   String get settings_saveFailed;
-
-  /// No description provided for @deleteAccount_button.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete account'**
-  String get deleteAccount_button;
-
-  /// No description provided for @deleteAccount_hint.
-  ///
-  /// In en, this message translates to:
-  /// **'Permanently delete your account and the personal data linked to it.'**
-  String get deleteAccount_hint;
-
-  /// No description provided for @deleteAccount_title.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete your account?'**
-  String get deleteAccount_title;
-
-  /// No description provided for @deleteAccount_body.
-  ///
-  /// In en, this message translates to:
-  /// **'This permanently deletes your account and the personal data linked to it, and signs you out on every device. This can\'t be undone.\n\nContracts, signatures and payment records may be kept for as long as the law requires, then deleted.'**
-  String get deleteAccount_body;
-
-  /// No description provided for @deleteAccount_teamWarning.
-  ///
-  /// In en, this message translates to:
-  /// **'Team members you added will lose access too.'**
-  String get deleteAccount_teamWarning;
-
-  /// No description provided for @deleteAccount_passwordLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter your password to confirm'**
-  String get deleteAccount_passwordLabel;
-
-  /// No description provided for @deleteAccount_confirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete permanently'**
-  String get deleteAccount_confirm;
-
-  /// No description provided for @deleteAccount_wrongPassword.
-  ///
-  /// In en, this message translates to:
-  /// **'Incorrect password'**
-  String get deleteAccount_wrongPassword;
-
-  /// No description provided for @deleteAccount_failed.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t delete your account. Please try again.'**
-  String get deleteAccount_failed;
-
-  /// No description provided for @deleteAccount_done.
-  ///
-  /// In en, this message translates to:
-  /// **'Your account has been deleted.'**
-  String get deleteAccount_done;
 
   /// No description provided for @signature_deleted.
   ///
@@ -6373,13 +6318,15 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'of {total} {currency} — {remaining} remaining'**
-  String payments_remainingSummary(Object currency, Object remaining, Object total);
+  String payments_remainingSummary(
+      Object currency, Object remaining, Object total);
 
   /// No description provided for @payments_taxSummary.
   ///
   /// In en, this message translates to:
   /// **'Value: {value} {currency} + tax {percentage}% = {amount} {currency}'**
-  String payments_taxSummary(Object amount, Object currency, Object percentage, Object value);
+  String payments_taxSummary(
+      Object amount, Object currency, Object percentage, Object value);
 
   /// No description provided for @payments_dueDateFormat.
   ///
@@ -7651,7 +7598,8 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{weekday}, {year}/{month}/{day}'**
-  String calendarDateFormat(Object day, Object month, Object weekday, Object year);
+  String calendarDateFormat(
+      Object day, Object month, Object weekday, Object year);
 
   /// No description provided for @calendarEmpty.
   ///
@@ -9523,7 +9471,8 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'of {total} {currency} — {remaining} remaining'**
-  String paymentsRemainingSummary(Object currency, Object remaining, Object total);
+  String paymentsRemainingSummary(
+      Object currency, Object remaining, Object total);
 
   /// No description provided for @paymentsRequestHint.
   ///
@@ -11912,9 +11861,70 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your profile and language.'**
   String get settingsClientLead;
+
+  /// No description provided for @deleteAccount_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccount_button;
+
+  /// No description provided for @deleteAccount_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete your account and the personal data linked to it.'**
+  String get deleteAccount_hint;
+
+  /// No description provided for @deleteAccount_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get deleteAccount_title;
+
+  /// No description provided for @deleteAccount_body.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes your account and the personal data linked to it, and signs you out on every device. This can\'t be undone.\n\nContracts, signatures and payment records may be kept for as long as the law requires, then deleted.'**
+  String get deleteAccount_body;
+
+  /// No description provided for @deleteAccount_teamWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Team members you added will lose access too.'**
+  String get deleteAccount_teamWarning;
+
+  /// No description provided for @deleteAccount_passwordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password to confirm'**
+  String get deleteAccount_passwordLabel;
+
+  /// No description provided for @deleteAccount_confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get deleteAccount_confirm;
+
+  /// No description provided for @deleteAccount_wrongPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect password'**
+  String get deleteAccount_wrongPassword;
+
+  /// No description provided for @deleteAccount_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete your account. Please try again.'**
+  String get deleteAccount_failed;
+
+  /// No description provided for @deleteAccount_done.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been deleted.'**
+  String get deleteAccount_done;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -11923,7 +11933,8 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['ar', 'en'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['ar', 'en'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

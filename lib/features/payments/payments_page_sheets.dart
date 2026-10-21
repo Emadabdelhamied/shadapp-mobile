@@ -319,7 +319,6 @@ void showRequestPaymentSheet({
                   builder: (_, val, __) => DropdownButtonFormField<int>(
                     isExpanded: true,
                     initialValue: val,
-                    isExpanded: true,
                     dropdownColor: Lx.sheet,
                     style: Lx.text(ctx, size: 13.5),
                     icon: const LxIcon('down', size: 14, color: Lx.muted),

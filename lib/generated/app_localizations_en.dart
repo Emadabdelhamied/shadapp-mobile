@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -280,7 +279,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get forgotPasswordTitle => 'Reset Password';
 
   @override
-  String get forgotPasswordSubtitle => 'Enter your email and we\'ll send you a reset link.';
+  String get forgotPasswordSubtitle =>
+      'Enter your email and we\'ll send you a reset link.';
 
   @override
   String get forgotPasswordSubmit => 'Send Reset Link';
@@ -464,13 +464,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get enterEmailAndPassword => 'Please enter your email and password';
 
   @override
-  String get sessionExpiredMessage => 'Your session has expired. Please login again.';
+  String get sessionExpiredMessage =>
+      'Your session has expired. Please login again.';
 
   @override
-  String get serverErrorMessage => 'A server error occurred. Please try again later.';
+  String get serverErrorMessage =>
+      'A server error occurred. Please try again later.';
 
   @override
-  String get invalidCredentialsMessage => 'Invalid email or password. Please try again.';
+  String get invalidCredentialsMessage =>
+      'Invalid email or password. Please try again.';
 
   @override
   String get connectionFailedMessage =>
@@ -514,7 +517,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contractValueExclVat => 'Contract Value (Excl. VAT)';
 
   @override
-  String get contractApprovedUploadPayment => 'Contract approved! Please upload payment proof.';
+  String get contractApprovedUploadPayment =>
+      'Contract approved! Please upload payment proof.';
 
   @override
   String get viewSignedContract => 'View Signed Contract';
@@ -812,7 +816,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contract_deleteFile => 'Delete File';
 
   @override
-  String get contract_deleteFileConfirmation => 'Are you sure you want to delete this file?';
+  String get contract_deleteFileConfirmation =>
+      'Are you sure you want to delete this file?';
 
   @override
   String get contract_cancel => 'Cancel';
@@ -836,7 +841,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contract_confirmApprove => 'Confirm Approval';
 
   @override
-  String get contract_confirmApproveMsg => 'Are you sure you want to approve this contract?';
+  String get contract_confirmApproveMsg =>
+      'Are you sure you want to approve this contract?';
 
   @override
   String get contract_confirmAction => 'Confirm';
@@ -881,7 +887,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contract_signNow => 'Sign Now';
 
   @override
-  String get contract_companyApprovedMsg => 'Contract has been approved by the company';
+  String get contract_companyApprovedMsg =>
+      'Contract has been approved by the company';
 
   @override
   String get contract_goToPaymentAction => 'Proceed to Payment';
@@ -1037,7 +1044,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get files_deleteTitle => 'Delete File';
 
   @override
-  String get files_deleteConfirmation => 'Are you sure you want to delete this file?';
+  String get files_deleteConfirmation =>
+      'Are you sure you want to delete this file?';
 
   @override
   String get files_cancel => 'Cancel';
@@ -1167,38 +1175,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_saveFailed => 'Failed to save settings';
 
   @override
-  String get deleteAccount_button => 'Delete account';
-
-  @override
-  String get deleteAccount_hint =>
-      'Permanently delete your account and the personal data linked to it.';
-
-  @override
-  String get deleteAccount_title => 'Delete your account?';
-
-  @override
-  String get deleteAccount_body =>
-      'This permanently deletes your account and the personal data linked to it, and signs you out on every device. This can\'t be undone.\n\nContracts, signatures and payment records may be kept for as long as the law requires, then deleted.';
-
-  @override
-  String get deleteAccount_teamWarning => 'Team members you added will lose access too.';
-
-  @override
-  String get deleteAccount_passwordLabel => 'Enter your password to confirm';
-
-  @override
-  String get deleteAccount_confirm => 'Delete permanently';
-
-  @override
-  String get deleteAccount_wrongPassword => 'Incorrect password';
-
-  @override
-  String get deleteAccount_failed => 'Couldn\'t delete your account. Please try again.';
-
-  @override
-  String get deleteAccount_done => 'Your account has been deleted.';
-
-  @override
   String get signature_deleted => 'Signature deleted';
 
   @override
@@ -1249,7 +1225,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signature_orUploadImage => 'Or upload an image';
 
   @override
-  String get signature_saved_willReturn => 'Signature saved. You will be returned.';
+  String get signature_saved_willReturn =>
+      'Signature saved. You will be returned.';
 
   @override
   String get signature_fileReadFailed => 'Failed to read signature file';
@@ -1375,7 +1352,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get approvals_confirmApproval => 'Confirm Approval';
 
   @override
-  String get approvals_confirmApprovalMsg => 'Are you sure you want to approve this?';
+  String get approvals_confirmApprovalMsg =>
+      'Are you sure you want to approve this?';
 
   @override
   String get approvals_cancel => 'Cancel';
@@ -1474,7 +1452,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get payments_requestPayment => 'Request Payment';
 
   @override
-  String get payments_selectContract => 'Select the contract you\'re paying for';
+  String get payments_selectContract =>
+      'Select the contract you\'re paying for';
 
   @override
   String get payments_amount => 'Amount';
@@ -1846,7 +1825,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clientDetail_imageChanged => 'Profile picture updated';
 
   @override
-  String get clientDetail_imageChangeFailed => 'Failed to update profile picture';
+  String get clientDetail_imageChangeFailed =>
+      'Failed to update profile picture';
 
   @override
   String get clientDetail_saved => 'Client data saved';
@@ -1990,7 +1970,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createClient_autoPassword => 'Auto-generate Password';
 
   @override
-  String get createClient_autoPasswordHint => 'A strong password will be generated automatically';
+  String get createClient_autoPasswordHint =>
+      'A strong password will be generated automatically';
 
   @override
   String get createClient_notes => 'Notes';
@@ -2128,7 +2109,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createManager_autoPassword => 'Auto-generate Password';
 
   @override
-  String get createManager_autoPasswordHint => 'A strong password will be generated automatically';
+  String get createManager_autoPasswordHint =>
+      'A strong password will be generated automatically';
 
   @override
   String get createManager_resetPassword => 'Reset Password';
@@ -2155,7 +2137,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountManagers_deleteTitle => 'Delete Manager';
 
   @override
-  String get accountManagers_deleteConfirmation => 'Are you sure you want to delete this manager?';
+  String get accountManagers_deleteConfirmation =>
+      'Are you sure you want to delete this manager?';
 
   @override
   String get accountManagers_cancel => 'Cancel';
@@ -2193,7 +2176,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminSettings_saveFailed => 'Failed to save settings';
 
   @override
-  String get adminSettings_enterValidPercentage => 'Please enter a valid percentage (0-100)';
+  String get adminSettings_enterValidPercentage =>
+      'Please enter a valid percentage (0-100)';
 
   @override
   String get adminSettings_taxSaved => 'Tax settings saved';
@@ -2205,7 +2189,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminSettings_imageChanged => 'Profile picture updated';
 
   @override
-  String get adminSettings_imageChangeFailed => 'Failed to update profile picture';
+  String get adminSettings_imageChangeFailed =>
+      'Failed to update profile picture';
 
   @override
   String get adminSettings_signatureSaved => 'Signature saved';
@@ -2217,7 +2202,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminSettings_signatureDeleted => 'Signature deleted';
 
   @override
-  String get adminSettings_signatureDeleteFailed => 'Failed to delete signature';
+  String get adminSettings_signatureDeleteFailed =>
+      'Failed to delete signature';
 
   @override
   String get adminSettings_title => 'Admin Settings';
@@ -2280,7 +2266,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminSettings_companyTax => 'Company Tax';
 
   @override
-  String get adminSettings_taxDescription => 'Tax percentage applied to all contracts';
+  String get adminSettings_taxDescription =>
+      'Tax percentage applied to all contracts';
 
   @override
   String get adminSettings_taxPercentage => 'Tax Percentage (%)';
@@ -2363,7 +2350,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminSettings_clauseSaveOrder => 'Save order';
 
   @override
-  String get adminSettings_clausesEmpty => 'No clauses yet — add your first template.';
+  String get adminSettings_clausesEmpty =>
+      'No clauses yet — add your first template.';
 
   @override
   String get adminSettings_clausesLoadFailed => 'Failed to load clauses';
@@ -2494,7 +2482,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get auditLog_action_rejected => 'Rejected';
 
   @override
-  String get auditLog_action_requestEditApproval => 'Edit requested on approval';
+  String get auditLog_action_requestEditApproval =>
+      'Edit requested on approval';
 
   @override
   String get auditLog_action_submitPayment => 'Payment submitted';
@@ -2584,10 +2573,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contractBuilder_updated => 'Contract updated successfully';
 
   @override
-  String get contractBuilder_createdAndSent => 'Contract created and sent successfully';
+  String get contractBuilder_createdAndSent =>
+      'Contract created and sent successfully';
 
   @override
-  String get contractBuilder_createdSendFailed => 'Contract created but failed to send';
+  String get contractBuilder_createdSendFailed =>
+      'Contract created but failed to send';
 
   @override
   String get contractBuilder_updateFailed => 'Failed to update contract';
@@ -2657,7 +2648,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your contract is being prepared. You will be notified once it is ready.';
 
   @override
-  String get onboarding_waitingCompanyApproval => 'Waiting for Company Approval';
+  String get onboarding_waitingCompanyApproval =>
+      'Waiting for Company Approval';
 
   @override
   String get onboarding_waitingCompanyApprovalMsg =>
@@ -2682,7 +2674,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingNextStepsTitle => 'What happens next';
 
   @override
-  String get onboardingNotifyHint => 'We’ll notify you — no need to keep the app open.';
+  String get onboardingNotifyHint =>
+      'We’ll notify you — no need to keep the app open.';
 
   @override
   String onboardingStepOf(int current, int total) {
@@ -2746,7 +2739,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboarding_mentionChanges => 'Mention the changes you need';
 
   @override
-  String get onboarding_exampleChanges => 'e.g. Please update the payment terms';
+  String get onboarding_exampleChanges =>
+      'e.g. Please update the payment terms';
 
   @override
   String get onboarding_cancelAction => 'Cancel';
@@ -2767,7 +2761,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboarding_completePayment => 'Complete Payment';
 
   @override
-  String get onboarding_confirmPaymentMsg => 'Please upload your payment proof to continue.';
+  String get onboarding_confirmPaymentMsg =>
+      'Please upload your payment proof to continue.';
 
   @override
   String get onboarding_paymentRejectedTitle => 'Previous payment was rejected';
@@ -2865,7 +2860,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get onboarding_addSignaturePrompt => 'Please add your electronic signature';
+  String get onboarding_addSignaturePrompt =>
+      'Please add your electronic signature';
 
   @override
   String get onboarding_yourApprovalStage => 'Your Approval';
@@ -2878,7 +2874,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The contract will be sent to you for signing soon';
 
   @override
-  String get onboarding_waitingCompanyReviewMsg => 'The company team is reviewing your request';
+  String get onboarding_waitingCompanyReviewMsg =>
+      'The company team is reviewing your request';
 
   @override
   String get onboarding_reviewContractPrompt =>
@@ -3135,7 +3132,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contractApprovedByCompany => 'Contract approved by company';
 
   @override
-  String get goToPaymentPage => 'You can proceed to payment page to complete payment';
+  String get goToPaymentPage =>
+      'You can proceed to payment page to complete payment';
 
   @override
   String get proceedToPayment => 'Proceed to Payment';
@@ -3192,7 +3190,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get approveContract => 'Approve Contract';
 
   @override
-  String get confirmApproveContract => 'Are you sure you want to approve this contract?';
+  String get confirmApproveContract =>
+      'Are you sure you want to approve this contract?';
 
   @override
   String get requiredEdits => 'Required edits';
@@ -3240,12 +3239,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get payments_methodCheque => 'Cheque';
 
   @override
-  String payments_remainingSummary(Object currency, Object remaining, Object total) {
+  String payments_remainingSummary(
+      Object currency, Object remaining, Object total) {
     return 'of $total $currency — $remaining remaining';
   }
 
   @override
-  String payments_taxSummary(Object amount, Object currency, Object percentage, Object value) {
+  String payments_taxSummary(
+      Object amount, Object currency, Object percentage, Object value) {
     return 'Value: $value $currency + tax $percentage% = $amount $currency';
   }
 
@@ -3395,13 +3396,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get approveContractTitle => 'Approve Contract';
 
   @override
-  String get approveContractConfirm => 'Are you sure you want to approve this contract?';
+  String get approveContractConfirm =>
+      'Are you sure you want to approve this contract?';
 
   @override
   String get signatureRequiredTitle => 'Signature Required';
 
   @override
-  String get signatureRequiredMessage => 'You need to save your signature before approving.';
+  String get signatureRequiredMessage =>
+      'You need to save your signature before approving.';
 
   @override
   String get signatureRequiredSubUserMessage =>
@@ -3546,7 +3549,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get amMeetingTitleHint => 'Example: weekly follow-up meeting';
 
   @override
-  String get amMeetingValidation => 'Please enter a meeting title and select a client';
+  String get amMeetingValidation =>
+      'Please enter a meeting title and select a client';
 
   @override
   String get amMinutes => 'minutes';
@@ -3916,7 +3920,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calendarContractStartLegend => 'Contract Start';
 
   @override
-  String calendarDateFormat(Object day, Object month, Object weekday, Object year) {
+  String calendarDateFormat(
+      Object day, Object month, Object weekday, Object year) {
     return '$weekday, $year/$month/$day';
   }
 
@@ -3945,7 +3950,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatApprovalAlreadyRequested => 'Approval already requested';
 
   @override
-  String get chatApprovalRequestedHint => 'The client will be asked to approve this message';
+  String get chatApprovalRequestedHint =>
+      'The client will be asked to approve this message';
 
   @override
   String get chatApprovalRequestFailed => 'Approval request failed';
@@ -4050,7 +4056,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatUpcomingMeeting => 'Upcoming Meeting';
 
   @override
-  String get chatWorkspaceLocked => 'Chat unavailable — waiting for workspace activation';
+  String get chatWorkspaceLocked =>
+      'Chat unavailable — waiting for workspace activation';
 
   @override
   String get chatYesterday => 'Yesterday';
@@ -4110,7 +4117,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clientDetailInitials => 'MU';
 
   @override
-  String get clientDetailLeaveBlank => 'Leave blank if you don\'t want to change it';
+  String get clientDetailLeaveBlank =>
+      'Leave blank if you don\'t want to change it';
 
   @override
   String get clientDetailNewPassword => 'New Password';
@@ -4153,7 +4161,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get companyApproveUseSavedSignature => 'Your saved signature will be used:';
+  String get companyApproveUseSavedSignature =>
+      'Your saved signature will be used:';
 
   @override
   String get contractAreYouSure => 'Are you sure?';
@@ -4163,13 +4172,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Both parties acknowledge their legal capacity to contract';
 
   @override
-  String get contractBuilderClauseFallback2 => 'The first party shall provide the agreed services';
+  String get contractBuilderClauseFallback2 =>
+      'The first party shall provide the agreed services';
 
   @override
-  String get contractBuilderClauseFallback3 => 'The second party shall pay the agreed amount';
+  String get contractBuilderClauseFallback3 =>
+      'The second party shall pay the agreed amount';
 
   @override
-  String get contractBuilderClauseFallback4 => 'Both parties shall maintain full confidentiality';
+  String get contractBuilderClauseFallback4 =>
+      'Both parties shall maintain full confidentiality';
 
   @override
   String get contractBuilderClauseOptional1 =>
@@ -4184,26 +4196,31 @@ class AppLocalizationsEn extends AppLocalizations {
       'Intellectual property rights belong to the first party';
 
   @override
-  String get contractBuilderClauseOptional4 => 'The first party may adjust prices after 12 months';
+  String get contractBuilderClauseOptional4 =>
+      'The first party may adjust prices after 12 months';
 
   @override
   String get contractBuilderClauseOptional5 =>
       'This contract is subject to local laws and regulations';
 
   @override
-  String get contractBuilderClauseOptional6 => 'Disputes shall be resolved through arbitration';
+  String get contractBuilderClauseOptional6 =>
+      'Disputes shall be resolved through arbitration';
 
   @override
   String get contractBuilderCreateAndSend => 'Create and Send';
 
   @override
-  String get contractBuilderCreatedAndSent => 'Contract created and sent successfully';
+  String get contractBuilderCreatedAndSent =>
+      'Contract created and sent successfully';
 
   @override
-  String get contractBuilderCreatedSendFailed => 'Contract created but sending failed';
+  String get contractBuilderCreatedSendFailed =>
+      'Contract created but sending failed';
 
   @override
-  String get contractBuilderCreateExtraTitle => 'Create Additional Service Contract';
+  String get contractBuilderCreateExtraTitle =>
+      'Create Additional Service Contract';
 
   @override
   String get contractBuilderCreateFailed => 'Failed to create contract';
@@ -4263,7 +4280,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contractBuilderSelectDate => 'Select Date';
 
   @override
-  String get contractBuilderTitleHint => 'Example: additional maintenance contract';
+  String get contractBuilderTitleHint =>
+      'Example: additional maintenance contract';
 
   @override
   String get contractBuilderTitleRequired => 'Please enter the contract title';
@@ -4346,7 +4364,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createClientAutoPassword => 'Auto Password';
 
   @override
-  String get createClientAutoPasswordEmailHint => 'It will be sent to the client via email';
+  String get createClientAutoPasswordEmailHint =>
+      'It will be sent to the client via email';
 
   @override
   String get createClientCancel => 'Cancel';
@@ -4364,7 +4383,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createClientCreateButton => 'Create Client';
 
   @override
-  String get createClientCredentialsSent => 'Login credentials sent to the client via email';
+  String get createClientCredentialsSent =>
+      'Login credentials sent to the client via email';
 
   @override
   String get createClientDateOfBirth => 'Date of Birth';
@@ -4382,7 +4402,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createClientNotes => 'Notes';
 
   @override
-  String get createClientNotesHint => 'Any additional information about the client...';
+  String get createClientNotesHint =>
+      'Any additional information about the client...';
 
   @override
   String get createClientOk => 'OK';
@@ -4409,7 +4430,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createManagerAutoPassword => 'Auto Password';
 
   @override
-  String get createManagerAutoPasswordHint => 'It will be generated automatically';
+  String get createManagerAutoPasswordHint =>
+      'It will be generated automatically';
 
   @override
   String get createManagerBasicData => 'Basic Data';
@@ -4451,7 +4473,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createManagerFailedToLoad => 'Failed to load manager data';
 
   @override
-  String get createManagerLeaveBlank => 'Leave blank if you don\'t want to change it';
+  String get createManagerLeaveBlank =>
+      'Leave blank if you don\'t want to change it';
 
   @override
   String get createManagerName => 'Name';
@@ -4538,7 +4561,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filesDefinitionDeleteFailed => 'Failed to delete definition';
 
   @override
-  String get filesDeleteDefinitionConfirm => 'Are you sure you want to delete this definition?';
+  String get filesDeleteDefinitionConfirm =>
+      'Are you sure you want to delete this definition?';
 
   @override
   String get filesDeleteDefinitionTitle => 'Delete Document Definition';
@@ -4736,10 +4760,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentsAmount => 'Amount *';
 
   @override
-  String get paymentsApproveConfirmMsg => 'Are you sure you want to approve this payment?';
+  String get paymentsApproveConfirmMsg =>
+      'Are you sure you want to approve this payment?';
 
   @override
-  String get paymentsApprovedWorkspaceActive => 'Payment approved — workspace is now active';
+  String get paymentsApprovedWorkspaceActive =>
+      'Payment approved — workspace is now active';
 
   @override
   String get paymentsApprovedWorkspacePending =>
@@ -4752,7 +4778,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentsClear => 'Clear';
 
   @override
-  String get paymentsClearInstallmentConfirm => 'Are you sure you want to clear this installment?';
+  String get paymentsClearInstallmentConfirm =>
+      'Are you sure you want to clear this installment?';
 
   @override
   String get paymentsClearInstallmentTitle => 'Clear Installment';
@@ -4879,7 +4906,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentsPaidInFull => 'Paid in full';
 
   @override
-  String get paymentsRejectConfirmMsg => 'Are you sure you want to reject this payment?';
+  String get paymentsRejectConfirmMsg =>
+      'Are you sure you want to reject this payment?';
 
   @override
   String get paymentsRejectedMsg => 'Payment rejected';
@@ -4888,7 +4916,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentsRejectPayment => 'Reject Payment';
 
   @override
-  String paymentsRemainingSummary(Object currency, Object remaining, Object total) {
+  String paymentsRemainingSummary(
+      Object currency, Object remaining, Object total) {
     return 'of $total $currency — $remaining remaining';
   }
 
@@ -5337,7 +5366,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clientProfileCheckInSuccess => 'Location updated successfully';
 
   @override
-  String get clientProfileCheckInFailed => 'Unable to get location. Check permissions.';
+  String get clientProfileCheckInFailed =>
+      'Unable to get location. Check permissions.';
 
   @override
   String get clientProfileOpenMaps => 'Open in Google Maps';
@@ -5492,7 +5522,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get register_signIn => 'Sign in';
 
   @override
-  String get register_errFixFields => 'Please fix the highlighted fields and try again.';
+  String get register_errFixFields =>
+      'Please fix the highlighted fields and try again.';
 
   @override
   String get register_errCompanyName => 'Enter your company name';
@@ -5669,7 +5700,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get staffUnarchivedMsg => 'Staff member restored.';
 
   @override
-  String get staffPasswordChangedMsg => 'Password changed. The staff member was signed out.';
+  String get staffPasswordChangedMsg =>
+      'Password changed. The staff member was signed out.';
 
   @override
   String get staffArchivedBadge => 'Archived';
@@ -5783,7 +5815,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mtJoinMeetings => 'Join meetings';
 
   @override
-  String get mtDepNote => 'Turning a \"see\" switch off also turns its action off.';
+  String get mtDepNote =>
+      'Turning a \"see\" switch off also turns its action off.';
 
   @override
   String get mtSave => 'Save';
@@ -5815,7 +5848,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get mtRemoveBodyNone => 'They are not assigned to any of your clients.';
+  String get mtRemoveBodyNone =>
+      'They are not assigned to any of your clients.';
 
   @override
   String get mtRemoveConfirm => 'Remove';
@@ -5830,7 +5864,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mtNoClientsToLink => 'All your clients are already linked.';
 
   @override
-  String get mtEmptyTeam => 'Your team is empty. Add people from company staff.';
+  String get mtEmptyTeam =>
+      'Your team is empty. Add people from company staff.';
 
   @override
   String get mtNotMine => 'Not in your team';
@@ -5855,7 +5890,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your team members. Assign or unassign here — permissions are set from the Team page.';
 
   @override
-  String get teamTabEmptyManager => 'Nobody in your team yet. Add people from the Team page.';
+  String get teamTabEmptyManager =>
+      'Nobody in your team yet. Add people from the Team page.';
 
   @override
   String get chatStaffReadOnly => 'You can read this chat but not write in it.';
@@ -6123,7 +6159,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingEditLabel => 'What would you like changed?';
 
   @override
-  String get onboardingEditHint => 'e.g. Please split the payment into two instalments';
+  String get onboardingEditHint =>
+      'e.g. Please split the payment into two instalments';
 
   @override
   String get onboardingSendRequest => 'Send request';
@@ -6141,7 +6178,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingDropHint => 'Images from your gallery';
 
   @override
-  String get signatureLead => 'Your e-signature, used when you approve contracts and requests.';
+  String get signatureLead =>
+      'Your e-signature, used when you approve contracts and requests.';
 
   @override
   String get signatureNone => 'No signature saved yet';
@@ -6161,4 +6199,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsClientLead => 'Your profile and language.';
+
+  @override
+  String get deleteAccount_button => 'Delete account';
+
+  @override
+  String get deleteAccount_hint =>
+      'Permanently delete your account and the personal data linked to it.';
+
+  @override
+  String get deleteAccount_title => 'Delete your account?';
+
+  @override
+  String get deleteAccount_body =>
+      'This permanently deletes your account and the personal data linked to it, and signs you out on every device. This can\'t be undone.\n\nContracts, signatures and payment records may be kept for as long as the law requires, then deleted.';
+
+  @override
+  String get deleteAccount_teamWarning =>
+      'Team members you added will lose access too.';
+
+  @override
+  String get deleteAccount_passwordLabel => 'Enter your password to confirm';
+
+  @override
+  String get deleteAccount_confirm => 'Delete permanently';
+
+  @override
+  String get deleteAccount_wrongPassword => 'Incorrect password';
+
+  @override
+  String get deleteAccount_failed =>
+      'Couldn\'t delete your account. Please try again.';
+
+  @override
+  String get deleteAccount_done => 'Your account has been deleted.';
 }

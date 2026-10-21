@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shadapp_client/generated/app_localizations.dart';
 
 import 'core/api_client.dart';
 import 'core/app_log.dart';
@@ -16,7 +17,6 @@ import 'core/luxe/luxe_theme.dart';
 import 'core/notification_routing.dart';
 import 'core/notification_service.dart';
 import 'core/router.dart';
-import 'core/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
