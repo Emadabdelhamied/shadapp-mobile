@@ -1,10 +1,18 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
+
 import '../../../core/api_client.dart';
 import '../../../core/app_log.dart';
-import '../../../core/theme.dart';
+import '../../../core/locale_provider.dart';
+import '../../../core/luxe/lx_icons.dart';
+import '../../../core/luxe/tokens.dart';
+import '../../../core/widgets/luxe/luxe_widgets.dart';
+import '../../../core/widgets/signature_pad_screen.dart';
 import '../../../data/signature_repository.dart';
 import '../../../data/system_settings_repository.dart';
 import '../../../providers/auth_provider.dart';
@@ -12,8 +20,6 @@ import '../../../providers/contract_provider.dart';
 import '../../../providers/signature_provider.dart';
 import '../../../providers/system_settings_provider.dart';
 import 'admin_settings_clauses.dart';
-import '../../../core/widgets/signature_pad_screen.dart';
-import '../../settings/delete_account_button.dart';
 
 class AdminSettingsPage extends StatefulWidget {
   // Optional so this screen can be pumped in a widget test (e.g. embedded
@@ -26,7 +32,13 @@ class AdminSettingsPage extends StatefulWidget {
   final ContractProvider? contractProvider;
   final SignatureProvider? signatureProvider;
   final SystemSettingsProvider? systemSettingsProvider;
-  const AdminSettingsPage({super.key, this.api, this.authProvider, this.contractProvider, this.signatureProvider, this.systemSettingsProvider});
+  const AdminSettingsPage(
+      {super.key,
+      this.api,
+      this.authProvider,
+      this.contractProvider,
+      this.signatureProvider,
+      this.systemSettingsProvider});
 
   @override
   State<AdminSettingsPage> createState() => _AdminSettingsPageState();
@@ -35,9 +47,12 @@ class AdminSettingsPage extends StatefulWidget {
 class _AdminSettingsPageState extends State<AdminSettingsPage> {
   late final ApiClient _api = widget.api ?? ApiClient();
   late final AuthProvider _authProvider = widget.authProvider ?? AuthProvider(api: _api);
-  late final ContractProvider _contractProvider = widget.contractProvider ?? ContractProvider(api: _api);
-  late final SignatureProvider _signatureProvider = widget.signatureProvider ?? SignatureProvider(repository: SignatureRepository(api: _api));
-  late final SystemSettingsProvider _systemSettingsProvider = widget.systemSettingsProvider ?? SystemSettingsProvider(repository: SystemSettingsRepository(api: _api));
+  late final ContractProvider _contractProvider =
+      widget.contractProvider ?? ContractProvider(api: _api);
+  late final SignatureProvider _signatureProvider =
+      widget.signatureProvider ?? SignatureProvider(repository: SignatureRepository(api: _api));
+  late final SystemSettingsProvider _systemSettingsProvider = widget.systemSettingsProvider ??
+      SystemSettingsProvider(repository: SystemSettingsRepository(api: _api));
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
   final _sigTextController = TextEditingController();
@@ -90,7 +105,9 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
           // signature_url: the backend's signed link — /storage/... doesn't
           // exist in production (23 Sept 2026).
           _existingSigUrl = user['signature_url'] as String? ??
-              (sigData.startsWith('http') ? sigData : '${_api.baseUrl.replaceAll('/api', '')}$sigData');
+              (sigData.startsWith('http')
+                  ? sigData
+                  : '${_api.baseUrl.replaceAll('/api', '')}$sigData');
         } else {
           _existingSigText = sigData;
         }
@@ -122,32 +139,34 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       final list = (data['templates'] as List<dynamic>? ?? []);
       if (mounted) setState(() => _clauses = list.whereType<Map<String, dynamic>>().toList());
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.adminSettings_clausesLoadFailed)));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.adminSettings_clausesLoadFailed)));
     }
     if (mounted) setState(() => _clausesLoading = false);
   }
 
   Future<void> _saveClause([Map<String, dynamic>? existing]) => showSaveClauseDialog(
-    context: context,
-    existing: existing,
-    contractProvider: _contractProvider,
-    setSaving: (v) => setState(() => _clauseSaving = v),
-    reloadClauses: _loadClauses,
-  );
+        context: context,
+        existing: existing,
+        contractProvider: _contractProvider,
+        setSaving: (v) => setState(() => _clauseSaving = v),
+        reloadClauses: _loadClauses,
+      );
 
   Future<void> _deleteClause(Map<String, dynamic> clause) => deleteClauseTemplate(
-    context: context,
-    clause: clause,
-    contractProvider: _contractProvider,
-    reloadClauses: _loadClauses,
-  );
+        context: context,
+        clause: clause,
+        contractProvider: _contractProvider,
+        reloadClauses: _loadClauses,
+      );
 
   Future<void> _toggleClause(Map<String, dynamic> clause) => toggleClauseTemplate(
-    context: context,
-    clause: clause,
-    contractProvider: _contractProvider,
-    reloadClauses: _loadClauses,
-  );
+        context: context,
+        clause: clause,
+        contractProvider: _contractProvider,
+        reloadClauses: _loadClauses,
+      );
 
   Future<void> _moveClause(int index, int delta) async {
     final target = index + delta;
@@ -159,11 +178,11 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   }
 
   Future<void> _saveClauseOrder() => saveClauseTemplateOrder(
-    context: context,
-    clauses: _clauses,
-    contractProvider: _contractProvider,
-    reloadClauses: _loadClauses,
-  );
+        context: context,
+        clauses: _clauses,
+        contractProvider: _contractProvider,
+        reloadClauses: _loadClauses,
+      );
 
   Future<void> _saveProfile() async {
     setState(() => _saving = true);
@@ -172,9 +191,17 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       final body = <String, dynamic>{'name': _nameController.text.trim()};
       if (!isAM) body['official_email'] = _emailController.text.trim();
       await _authProvider.updateProfileRaw(body);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.settingsSaved))])));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(AppLocalizations.of(context)!.settingsSaved))
+        ])));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.settingsSaveFailed}: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${AppLocalizations.of(context)!.settingsSaveFailed}: $e')));
     }
     if (mounted) setState(() => _saving = false);
   }
@@ -182,15 +209,25 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   Future<void> _saveTax() async {
     final value = double.tryParse(_taxController.text.trim());
     if (value == null || value < 0 || value > 100) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.settingsTaxInvalid)));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.settingsTaxInvalid)));
       return;
     }
     setState(() => _taxSaving = true);
     try {
       await _systemSettingsProvider.updateSetting('corporate_tax_percentage', value);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.settingsTaxSaved))])));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(AppLocalizations.of(context)!.settingsTaxSaved))
+        ])));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.settingsTaxSaveFailed}: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${AppLocalizations.of(context)!.settingsTaxSaveFailed}: $e')));
     }
     if (mounted) setState(() => _taxSaving = false);
   }
@@ -296,9 +333,17 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       final user = response['user'] as Map<String, dynamic>?;
       if (user != null) _avatarUrl = user['avatar_url'] as String?;
       if (mounted) setState(() {});
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.settingsImageChanged))])));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(AppLocalizations.of(context)!.settingsImageChanged))
+        ])));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.settingsImageChangeFailed}: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('${AppLocalizations.of(context)!.settingsImageChangeFailed}: $e')));
     }
   }
 
@@ -311,11 +356,18 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
         await _signatureProvider.saveSelfSignatureText(text);
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.signatureSaved))])));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(AppLocalizations.of(context)!.signatureSaved))
+        ])));
         _load();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.signatureSaveFailed}: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${AppLocalizations.of(context)!.signatureSaveFailed}: $e')));
     }
     if (mounted) setState(() => _saving = false);
   }
@@ -328,9 +380,17 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
         _existingSigText = null;
       });
       await _load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Text(AppLocalizations.of(context)!.signatureDeleted)])));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Text(AppLocalizations.of(context)!.signatureDeleted)
+        ])));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.signatureDeleteFailed}: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${AppLocalizations.of(context)!.signatureDeleteFailed}: $e')));
     }
   }
 
@@ -341,382 +401,415 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     try {
       await _signatureProvider.uploadSelfSignatureImage(file);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.signatureSaved))])));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(AppLocalizations.of(context)!.signatureSaved))
+        ])));
         _load();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.signatureSaveFailed}: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${AppLocalizations.of(context)!.signatureSaveFailed}: $e')));
     }
   }
 
-  Widget _modeChip(String value, String label, IconData icon) {
-    final selected = _sigMode == value;
-    return GestureDetector(
-      onTap: () => setState(() => _sigMode = value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? ShadColors.crimson : ShadColors.card,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? ShadColors.crimson : ShadColors.cardBorder),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 18, color: selected ? ShadColors.textOnCrimson : ShadColors.textSecondary),
-          const SizedBox(width: 6),
-          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: selected ? ShadColors.textOnCrimson : ShadColors.textSecondary)),
-        ]),
-      ),
+  /// Mockup `.segm`: pill group, the selected one lightly filled.
+  Widget _segm(List<(String, String)> items, String selected, ValueChanged<String> onTap) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(Lx.rPill), border: Border.all(color: Lx.line2)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        for (final (value, label) in items)
+          GestureDetector(
+            onTap: () => onTap(value),
+            child: Container(
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected == value ? const Color(0x14FFFFFF) : Colors.transparent,
+                borderRadius: BorderRadius.circular(Lx.rPill),
+              ),
+              child: Text(label,
+                  style: Lx.text(context, size: 12, color: selected == value ? Lx.ink : Lx.muted)),
+            ),
+          ),
+      ]),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    final isAM = _api.role == 'account_manager' || _api.role == 'manager_assistant';
-    final l10n = AppLocalizations.of(context)!;
+  /// Mockup `.sec`: margin 22 0 10, 16px muted icon, serif 18.
+  Widget _sec(String icon, String title, {String? count}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 22, bottom: 10),
+      child: Row(children: [
+        LxIcon(icon, size: 16, color: Lx.muted),
+        const SizedBox(width: 8),
+        Text(title, style: Lx.display(context, size: 18)),
+        if (count != null) ...[
+          const SizedBox(width: 8),
+          Text(count, style: Lx.text(context, size: 12, color: Lx.muted)),
+        ],
+      ]),
+    );
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.settingsTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay', color: ShadColors.gold)),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // ═══════════════════════════════════════
-          // Section 1: Profile
-          // ═══════════════════════════════════════
-          _sectionHeader(Icons.person_outline, l10n.settingsProfile),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: ShadColors.card,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: ShadColors.cardBorder),
-            ),
-            child: Column(children: [
-              // Avatar
-              GestureDetector(
-                onTap: _pickAvatar,
-                child: Stack(children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: ShadColors.crimson,
-                    backgroundImage: _avatarUrl != null ? NetworkImage(_api.resolveFileUrl(_avatarUrl!)) : null,
-                    child: _avatarUrl == null
-                        ? const Icon(Icons.person, size: 40, color: ShadColors.gold)
-                        : null,
-                  ),
-                  Positioned(
-                    bottom: 0, right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(color: ShadColors.gold, shape: BoxShape.circle),
-                      child: const Icon(Icons.camera_alt, size: 14, color: ShadColors.background),
-                    ),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 4),
-              TextButton(
-                onPressed: _pickAvatar,
-                child: Text(l10n.profileChangePicture, style: const TextStyle(fontSize: 11, color: ShadColors.gold, fontFamily: 'Archivo')),
-              ),
-              const SizedBox(height: 12),
-              // Name field
-              _settingsField(
-                controller: _nameController,
-                label: l10n.settingsName,
-                icon: Icons.person_outline,
-              ),
-              const SizedBox(height: 12),
-              // Email field (SA only)
-              if (!isAM)
-                _settingsField(
-                  controller: _emailController,
-                  label: l10n.settingsOfficialEmail,
-                  icon: Icons.email_outlined,
-                  keyboardType: TextInputType.emailAddress,
-                ),
-              if (!isAM) const SizedBox(height: 16),
-              // Save button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saving ? null : _saveProfile,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ShadColors.gold,
-                    foregroundColor: ShadColors.background,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: _saving
-                      ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                      : Text(l10n.settingsSaveChanges, style: const TextStyle(fontWeight: FontWeight.w700, fontFamily: 'Archivo')),
-                ),
-              ),
+  /// Mockup `.f2`: 12px muted label, then the underlined input (15px).
+  Widget _f2(String label, Widget input) => Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: Lx.text(context, size: 12, color: Lx.muted)),
+          const SizedBox(height: 6),
+          input,
+        ]),
+      );
+
+  Widget _input(TextEditingController c, {TextInputType? keyboardType, Key? key, String? suffix}) =>
+      TextField(
+        key: key,
+        controller: c,
+        keyboardType: keyboardType,
+        style: Lx.text(context, size: 15),
+        cursorColor: Lx.crimsonInk,
+        decoration: InputDecoration(
+          isDense: true,
+          filled: false,
+          suffixText: suffix,
+          suffixStyle: Lx.text(context, size: 15, color: Lx.muted),
+          contentPadding: const EdgeInsets.only(top: 6, bottom: 9),
+          border: const UnderlineInputBorder(borderSide: BorderSide(color: Lx.line2)),
+          enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Lx.line2)),
+          focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Lx.crimsonInk)),
+        ),
+      );
+
+  /// Mockup `.sigprev`: 84px box, r12, line-2 border, centred script.
+  Widget _sigprev(Widget child, {VoidCallback? onTap}) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 84,
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12), border: Border.all(color: Lx.line2)),
+          child: child,
+        ),
+      );
+
+  /// Mockup settings switch row (`.opt`, align top): label (500) + sub, `.sw2`.
+  Widget _swRow(String title, String desc, bool value, ValueChanged<bool>? onChanged,
+          {Key? key, bool last = false}) =>
+      Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration:
+            BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: Lx.line))),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: Lx.text(context, size: 13.5, weight: FontWeight.w500)),
+              Text(desc, style: Lx.text(context, size: 12.5, color: Lx.muted)),
             ]),
           ),
+          const SizedBox(width: 12),
+          LuxeToggle(key: key, value: value, onChanged: onChanged),
+        ]),
+      );
 
-          // ═══════════════════════════════════════
-          // Section 2: Signature (SA only)
-          // ═══════════════════════════════════════
+  @override
+  Widget build(BuildContext context) {
+    if (_loading)
+      return const Scaffold(
+          backgroundColor: Lx.page,
+          body: Center(child: CircularProgressIndicator(color: Lx.crimsonInk)));
+    final isAM = _api.role == 'account_manager' || _api.role == 'manager_assistant';
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final h1 = Lx.display(context, size: 28).copyWith(height: 1.2);
+    final name = _nameController.text.trim();
+    final hasSig = _existingSigUrl != null || _existingSigText != null;
+    const script = TextStyle(fontFamily: 'DancingScript', fontSize: 30, color: Lx.ink);
+
+    return Scaffold(
+      backgroundColor: Lx.page,
+      appBar: AppBar(
+        backgroundColor: Lx.page,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: Lx.muted),
+        title: const SizedBox.shrink(),
+      ),
+      body: ListView(
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 2, 16, 28),
+        children: [
+          // Mockup pSettings: head('Account', 'Settings', 'Your profile and language.').
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 6, 0, 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(l10n.settingsEyebrow.toUpperCase(),
+                  style:
+                      Lx.text(context, size: 10.5, color: Lx.faint).copyWith(letterSpacing: 2.73)),
+              const SizedBox(height: 6),
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: l10n.settingsTitle),
+                  TextSpan(
+                      text: '.',
+                      style: h1.copyWith(color: Lx.crimsonInk, fontStyle: FontStyle.normal)),
+                ]),
+                key: const ValueKey('lx-page-title'),
+                style: h1,
+              ),
+              const SizedBox(height: 8),
+              Text(l10n.settingsLead, style: Lx.text(context, size: 13, color: Lx.muted)),
+            ]),
+          ),
+          // The account manager's own team of company staff (PLAN_2 ف٦).
+          if (_api.role == 'account_manager')
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: LuxeCard(
+                key: const ValueKey('am-my-team-entry'),
+                onTap: () => context.push('/am/my-team'),
+                child: Row(children: [
+                  const LxIcon('users', size: 18, color: Lx.muted),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(l10n.mtTitle, style: Lx.text(context, size: 14.5)),
+                      Text(l10n.mtSubtitle, style: Lx.text(context, size: 12.5, color: Lx.muted)),
+                    ]),
+                  ),
+                  const Icon(Icons.chevron_right, size: 18, color: Lx.faint),
+                ]),
+              ),
+            ),
+
+          // ── Profile ──
+          _sec('users', l10n.settingsProfile),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Row(children: [
+              GestureDetector(
+                onTap: _pickAvatar,
+                child: _avatarUrl != null
+                    ? CircleAvatar(
+                        radius: 32, backgroundImage: NetworkImage(_api.resolveFileUrl(_avatarUrl!)))
+                    : Container(
+                        width: 64,
+                        height: 64,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                            color: const Color(0xFF262626),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Lx.line2)),
+                        child: Text(name.isEmpty ? '·' : name[0].toUpperCase(),
+                            style: const TextStyle(
+                                fontFamily: Lx.serif,
+                                fontStyle: FontStyle.italic,
+                                fontSize: 26,
+                                color: Lx.ink)),
+                      ),
+              ),
+              const SizedBox(width: 16),
+              LuxeButton(
+                  key: const ValueKey('settings-change-picture'),
+                  label: l10n.profileChangePicture,
+                  size: LuxeButtonSize.sm,
+                  onPressed: _pickAvatar),
+            ]),
+          ),
+          _f2(l10n.settingsDisplayName,
+              _input(_nameController, key: const ValueKey('settings-name'))),
+          if (!isAM)
+            _f2(
+                l10n.settingsOfficialEmail,
+                _input(_emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    key: const ValueKey('settings-email'))),
+          _f2(
+            l10n.settingsLanguage,
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: _segm([('en', 'English'), ('ar', 'العربية')], isAr ? 'ar' : 'en', (v) {
+                if ((v == 'ar') != isAr) context.read<LocaleProvider>().toggle();
+              }),
+            ),
+          ),
+          SizedBox(
+            width: double.infinity,
+            child: LuxeButton(
+              key: const ValueKey('settings-save-profile'),
+              label: l10n.settingsSaveChanges,
+              kind: LuxeButtonKind.primary,
+              size: LuxeButtonSize.lg,
+              onPressed: _saving ? null : _saveProfile,
+            ),
+          ),
+
+          // ── Signature (super admin) ──
           if (!isAM) ...[
-            const SizedBox(height: 20),
-            _sectionHeader(Icons.draw_outlined, l10n.signatureTitle),
-            const SizedBox(height: 8),
-
-            // Card 1: Current signature
-            if (_existingSigUrl != null || _existingSigText != null) ...[
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: ShadColors.card,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: ShadColors.cardBorder),
-                ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _sec('sign', l10n.signatureTitle),
+            LuxeCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                if (hasSig) ...[
                   Row(children: [
-                    Icon(Icons.verified, size: 14, color: ShadColors.success),
-                    const SizedBox(width: 6),
-                    Expanded(child: Text(l10n.signatureCurrentSignature, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'Archivo'), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                    GestureDetector(
+                    Expanded(child: LuxeKind(l10n.signatureCurrentSignature)),
+                    InkResponse(
+                      key: const ValueKey('signature-delete'),
                       onTap: _deleteSignature,
-                      child: const Icon(Icons.delete_outline, size: 16, color: ShadColors.error),
+                      radius: 18,
+                      child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: LxIcon('trash', size: 16, color: Lx.danger)),
                     ),
                   ]),
-                  const SizedBox(height: 10),
-                  if (_existingSigUrl != null)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: ShadColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: ShadColors.cardBorder),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Image.network(_existingSigUrl!, height: 50, fit: BoxFit.contain),
-                      ),
-                    ),
-                  if (_existingSigText != null)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: ShadColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: ShadColors.cardBorder),
-                      ),
-                      child: Center(
-                        child: Text(_existingSigText!, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w400, fontFamily: 'DancingScript', color: ShadColors.gold)),
-                      ),
-                    ),
-                ]),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Card 2: New signature
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: ShadColors.card,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: ShadColors.cardBorder),
-              ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Icon(Icons.add_circle_outline, size: 14, color: ShadColors.gold),
-                  const SizedBox(width: 6),
-                  Text(
-                    (_existingSigUrl != null || _existingSigText != null) ? l10n.settingsNewSignature : l10n.settingsAddYourSignature,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'Archivo'),
+                  _sigprev(
+                    _existingSigUrl != null
+                        ? Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: LuxeSignatureInk(
+                                child: Image.network(_existingSigUrl!, fit: BoxFit.contain)))
+                        : Text(_existingSigText!, style: script),
                   ),
-                ]),
-                const SizedBox(height: 12),
-
-                // Mode chips
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  _modeChip('draw', l10n.signatureDrawMode, Icons.brush),
-                  const SizedBox(width: 8),
-                  _modeChip('text', l10n.signatureTextMode, Icons.text_fields),
-                ]),
-                const SizedBox(height: 14),
-
-                // Draw mode
+                  Text(l10n.settingsSigUsedFor, style: Lx.text(context, size: 11, color: Lx.faint)),
+                  const SizedBox(height: 14),
+                ],
+                Text(
+                    (hasSig ? l10n.settingsNewSignature : l10n.settingsAddYourSignature)
+                        .toUpperCase(),
+                    style: Lx.text(context, size: 10.5, color: Lx.faint)
+                        .copyWith(letterSpacing: 2.73)),
+                const SizedBox(height: 8),
+                _segm([
+                  ('draw', l10n.signatureDrawMode),
+                  ('text', l10n.signatureTextMode),
+                  ('upload', l10n.upload)
+                ], _sigMode, (v) => setState(() => _sigMode = v)),
                 if (_sigMode == 'draw') ...[
+                  _sigprev(
+                      Text(l10n.settingsSignHere,
+                          style: Lx.text(context, size: 14, color: Lx.faint)),
+                      onTap: _saving ? null : _openFullscreenSignature),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    child: LuxeButton(
+                      key: const ValueKey('settings-sign-fullscreen'),
+                      label: l10n.signatureOpenFullscreen,
+                      size: LuxeButtonSize.sm,
+                      kind: LuxeButtonKind.primary,
                       onPressed: _saving ? null : _openFullscreenSignature,
-                      icon: const Icon(Icons.fullscreen, size: 20),
-                      label: Text(l10n.signatureOpenFullscreen, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: ShadColors.gold,
-                        foregroundColor: ShadColors.background,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _saving ? null : _pickImage,
-                      icon: const Icon(Icons.image, size: 16, color: ShadColors.gold),
-                      label: Text(l10n.settingsUploadSignatureImage, style: const TextStyle(color: ShadColors.gold, fontSize: 12, fontFamily: 'Archivo')),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: ShadColors.gold),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
                     ),
                   ),
                 ],
-
-                // Text mode
                 if (_sigMode == 'text') ...[
-                  _subLabel(l10n.signatureTypeYourName),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: ShadColors.black,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: ShadColors.cardBorder),
-                    ),
-                    child: TextField(
-                      controller: _sigTextController,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w400, fontFamily: 'DancingScript', color: ShadColors.gold),
-                      decoration: InputDecoration(
-                        hintText: l10n.settingsSignatureHint,
-                        hintStyle: const TextStyle(color: ShadColors.textDisabled, fontSize: 18),
-                        border: InputBorder.none,
+                  _sigprev(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: TextField(
+                        controller: _sigTextController,
+                        textAlign: TextAlign.center,
+                        style: script,
+                        cursorColor: Lx.crimsonInk,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          filled: false,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          hintText: l10n.settingsSignatureHint,
+                          hintStyle: Lx.text(context, size: 14, color: Lx.faint),
+                        ),
+                        maxLines: 1,
                       ),
-                      maxLines: 1,
                     ),
                   ),
-                  const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    child: LuxeButton(
+                      key: const ValueKey('settings-save-signature'),
+                      label: l10n.signatureSaveSignature,
+                      size: LuxeButtonSize.sm,
+                      kind: LuxeButtonKind.primary,
                       onPressed: _saving ? null : _saveSignature,
-                      icon: _saving
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.check_circle, size: 18),
-                      label: Text(l10n.signatureSaveSignature, style: const TextStyle(fontSize: 12)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: ShadColors.crimson,
-                        foregroundColor: ShadColors.textOnCrimson,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
+                    ),
+                  ),
+                ],
+                if (_sigMode == 'upload') ...[
+                  _sigprev(
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        const LxIcon('up', size: 18, color: Lx.faint),
+                        const SizedBox(width: 8),
+                        Text(l10n.settingsUploadSignatureImage,
+                            style: Lx.text(context, size: 13, color: Lx.faint)),
+                      ]),
+                      onTap: _saving ? null : _pickImage),
+                  SizedBox(
+                    width: double.infinity,
+                    child: LuxeButton(
+                      label: l10n.settingsUploadSignatureImage,
+                      lxIcon: 'up',
+                      size: LuxeButtonSize.sm,
+                      kind: LuxeButtonKind.primary,
+                      onPressed: _saving ? null : _pickImage,
                     ),
                   ),
                 ],
               ]),
             ),
-          ],
-          const SizedBox(height: 32),
 
-          // ═══════════════════════════════════════
-          // Section 3: System settings (SA only)
-          // ═══════════════════════════════════════
-          if (!isAM) ...[
-            _sectionHeader(Icons.settings_suggest_outlined, l10n.settingsSystemSettings),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: ShadColors.card,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: ShadColors.cardBorder),
-              ),
+            // ── System settings ──
+            _sec('gear', l10n.settingsSystemSettings),
+            LuxeCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(l10n.settingsCorporateTax, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay')),
-                const SizedBox(height: 4),
-                Text(l10n.settingsCorporateTaxDesc, style: TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(
-                    child: _settingsField(
-                      controller: _taxController,
-                      label: l10n.settingsTaxRate,
-                      icon: Icons.percent,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('%', style: TextStyle(fontSize: 14, color: ShadColors.textSecondary)),
-                ]),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _taxSaving ? null : _saveTax,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ShadColors.gold,
-                      foregroundColor: ShadColors.background,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: _taxSaving
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(l10n.settingsSaveTax, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'Archivo')),
-                  ),
+                Text(l10n.settingsCorporateTax,
+                    style: Lx.text(context, size: 13.5, weight: FontWeight.w500)),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
+                  child: Text(l10n.settingsCorporateTaxDesc,
+                      style: Lx.text(context, size: 11, color: Lx.faint)),
                 ),
-                const SizedBox(height: 16),
-                const Divider(color: ShadColors.cardBorder),
-                const SizedBox(height: 12),
-                Row(children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(l10n.settingManagersCanReviewFiles, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay')),
-                      const SizedBox(height: 4),
-                      Text(l10n.settingManagersCanReviewFilesDesc, style: TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
-                    ]),
-                  ),
-                  Switch(
-                    value: _managersCanReviewFiles,
-                    onChanged: _savingManagersCanReviewFiles ? null : _toggleManagersCanReviewFiles,
-                    activeThumbColor: ShadColors.gold,
-                  ),
-                ]),
-                const SizedBox(height: 12),
-                const Divider(color: ShadColors.cardBorder),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(l10n.settingShowContractDates, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay')),
-                      const SizedBox(height: 4),
-                      Text(l10n.settingShowContractDatesDesc, style: TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
-                    ]),
-                  ),
-                  Switch(
-                    value: _showContractDates,
-                    onChanged: _savingShowContractDates ? null : _toggleShowContractDates,
-                    activeThumbColor: ShadColors.gold,
+                      child: _input(_taxController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          key: const ValueKey('settings-tax'),
+                          suffix: '%')),
+                  const SizedBox(width: 12),
+                  LuxeButton(
+                    key: const ValueKey('settings-save-tax'),
+                    label: l10n.settingsSaveTax,
+                    size: LuxeButtonSize.sm,
+                    onPressed: _taxSaving ? null : _saveTax,
                   ),
                 ]),
               ]),
             ),
-          ],
+            LuxeCard(
+              child: Column(children: [
+                _swRow(
+                    l10n.settingManagersCanReviewFiles,
+                    l10n.settingManagersCanReviewFilesDesc,
+                    _managersCanReviewFiles,
+                    _savingManagersCanReviewFiles ? null : _toggleManagersCanReviewFiles,
+                    key: const ValueKey('settings-managers-review')),
+                _swRow(l10n.settingShowContractDates, l10n.settingShowContractDatesDesc,
+                    _showContractDates, _savingShowContractDates ? null : _toggleShowContractDates,
+                    key: const ValueKey('settings-show-dates'), last: true),
+              ]),
+            ),
 
-          // ═══════════════════════════════════════
-          // Section 4: Contract clauses (SA only)
-          // ═══════════════════════════════════════
-          if (!isAM) ...[
-            const SizedBox(height: 20),
-            _sectionHeader(Icons.description_outlined, l10n.adminSettings_clauses),
-            const SizedBox(height: 4),
-            Text(l10n.adminSettings_clausesDescription, style: TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
-            const SizedBox(height: 8),
+            // ── Contract clauses ──
+            _sec('list', l10n.adminSettings_clauses,
+                count: _clausesLoading ? null : '${_clauses.length}'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(l10n.clausesLead, style: Lx.text(context, size: 12.5, color: Lx.muted)),
+            ),
             buildClauseTemplatesSection(
               context: context,
               clausesLoading: _clausesLoading,
@@ -730,50 +823,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
               onDelete: _deleteClause,
             ),
           ],
-          const SizedBox(height: 40),
-          DeleteAccountButton(authProvider: _authProvider),
-          const SizedBox(height: 32),
         ],
-      ),
-    );
-  }
-
-  Widget _sectionHeader(IconData icon, String title) {
-    return Row(children: [
-      Icon(icon, size: 16, color: ShadColors.gold),
-      const SizedBox(width: 6),
-      Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
-    ]);
-  }
-
-  Widget _subLabel(String text) {
-    return Text(text, style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo'));
-  }
-
-  Widget _settingsField({required TextEditingController controller, required String label, required IconData icon, TextInputType? keyboardType}) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 13, color: ShadColors.textPrimary, fontFamily: 'Archivo'),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo'),
-        prefixIcon: Icon(icon, size: 18, color: ShadColors.textSecondary),
-        filled: true,
-        fillColor: ShadColors.background,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: ShadColors.cardBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: ShadColors.cardBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: ShadColors.gold),
-        ),
       ),
     );
   }

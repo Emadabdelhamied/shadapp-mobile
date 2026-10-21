@@ -196,7 +196,7 @@ void main() {
 
     await pumpPage(tester, api);
     await tester.enterText(find.byType(TextField), 'a plain message');
-    await tester.tap(find.byIcon(Icons.send_rounded));
+    await tester.tap(find.byKey(const ValueKey('chat-send')));
     await tester.pumpAndSettle();
 
     expect(sentBody, {'message': 'a plain message'});
@@ -221,7 +221,7 @@ void main() {
     await tester.tap(find.text('Reply'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'replying now');
-    await tester.tap(find.byIcon(Icons.send_rounded));
+    await tester.tap(find.byKey(const ValueKey('chat-send')));
     await tester.pumpAndSettle();
 
     expect(sentBody, {'message': 'replying now', 'reply_to_id': 2});
@@ -245,7 +245,7 @@ void main() {
     await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'edited message');
-    await tester.tap(find.byIcon(Icons.check));
+    await tester.tap(find.byKey(const ValueKey('chat-send')));
     await tester.pumpAndSettle();
 
     expect(sentBody, {'message': 'edited message'});
@@ -373,52 +373,19 @@ void main() {
     expect(find.text('Edit requested'), findsOneWidget);
   });
 
-  testWidgets('opening the contracts sheet fetches and lists workspace contracts', (tester) async {
+  testWidgets('the header shows the manager like the mockup, with no contracts or Zoom buttons', (tester) async {
     final httpClient = MockHttpClient();
     final api = buildTestApiClient(client: httpClient);
     api.userId = 10;
     api.workspaceId = 5;
-    stubDefaultGets(httpClient, contracts: [
-      {'id': 1, 'title': 'Service Agreement', 'status': 'sent'},
-    ]);
+    stubDefaultGets(httpClient);
 
     await pumpPage(tester, api);
-    await tester.tap(find.byIcon(Icons.copy_outlined));
-    await tester.pumpAndSettle();
 
-    verify(() => httpClient.get(any(that: predicate<Uri>((u) => u.path.endsWith('/workspaces/5/contracts'))),
-        headers: any(named: 'headers'))).called(1);
-    expect(find.text('Service Agreement'), findsOneWidget);
-  });
-
-  testWidgets('opening the contracts sheet shows the empty state with no contracts', (tester) async {
-    final httpClient = MockHttpClient();
-    final api = buildTestApiClient(client: httpClient);
-    api.userId = 10;
-    api.workspaceId = 5;
-    stubDefaultGets(httpClient, contracts: []);
-
-    await pumpPage(tester, api);
-    await tester.tap(find.byIcon(Icons.copy_outlined));
-    await tester.pumpAndSettle();
-
-    expect(find.text('No Contracts'), findsOneWidget);
-  });
-
-  testWidgets('tapping the Zoom button with no scheduled meeting shows the no-active-meeting snackbar', (tester) async {
-    final httpClient = MockHttpClient();
-    final api = buildTestApiClient(client: httpClient);
-    api.userId = 10;
-    api.workspaceId = 5;
-    stubDefaultGets(httpClient, meetings: []);
-
-    await pumpPage(tester, api);
-    await tester.tap(find.byIcon(Icons.videocam_outlined));
-    await tester.pumpAndSettle();
-
-    verify(() => httpClient.get(any(that: predicate<Uri>((u) => u.path.endsWith('/workspaces/5/meetings'))),
-        headers: any(named: 'headers'))).called(1);
-    expect(find.text('No active meeting'), findsOneWidget);
+    expect(find.byKey(const ValueKey('chat-header')), findsOneWidget);
+    expect(find.text('ACCOUNT MANAGER'), findsOneWidget);
+    expect(find.byKey(const ValueKey('chat-contracts')), findsNothing);
+    expect(find.byKey(const ValueKey('chat-zoom')), findsNothing);
   });
 
   // plans/notifications-badges-toasts-plan.md ن15 — this screen used to call

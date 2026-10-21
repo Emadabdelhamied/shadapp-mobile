@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -279,8 +280,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get forgotPasswordTitle => 'إعادة تعيين كلمة المرور';
 
   @override
-  String get forgotPasswordSubtitle =>
-      'اكتب بريدك الإلكتروني وهنبعتلك رابط لإعادة التعيين.';
+  String get forgotPasswordSubtitle => 'اكتب بريدك الإلكتروني وهنبعتلك رابط لإعادة التعيين.';
 
   @override
   String get forgotPasswordSubmit => 'إرسال الرابط';
@@ -461,12 +461,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get forgotPassword => 'نسيت كلمة المرور؟';
 
   @override
-  String get enterEmailAndPassword =>
-      'يرجى إدخال بريدك الإلكتروني وكلمة المرور';
+  String get enterEmailAndPassword => 'يرجى إدخال بريدك الإلكتروني وكلمة المرور';
 
   @override
-  String get sessionExpiredMessage =>
-      'انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.';
+  String get sessionExpiredMessage => 'انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.';
 
   @override
   String get serverErrorMessage => 'حدث خطأ في الخادم. يرجى المحاولة لاحقاً.';
@@ -480,8 +478,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر الوصول إلى الخادم. تأكد من اتصالك ومن أن الخادم يعمل.';
 
   @override
-  String get tooManyAttemptsMessage =>
-      'محاولات تسجيل دخول كثيرة. انتظر دقيقة ثم حاول مرة أخرى.';
+  String get tooManyAttemptsMessage => 'محاولات تسجيل دخول كثيرة. انتظر دقيقة ثم حاول مرة أخرى.';
 
   @override
   String get loginSuccess => 'تم تسجيل الدخول بنجاح';
@@ -517,8 +514,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get contractValueExclVat => 'قيمة العقد (غير شامل ضريبة)';
 
   @override
-  String get contractApprovedUploadPayment =>
-      'تم اعتماد العقد! يرجى رفع إثبات الدفع.';
+  String get contractApprovedUploadPayment => 'تم اعتماد العقد! يرجى رفع إثبات الدفع.';
 
   @override
   String get viewSignedContract => 'عرض العقد الموقع';
@@ -816,8 +812,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get contract_deleteFile => 'حذف الملف';
 
   @override
-  String get contract_deleteFileConfirmation =>
-      'هل أنت متأكد أنك تريد حذف هذا الملف؟';
+  String get contract_deleteFileConfirmation => 'هل أنت متأكد أنك تريد حذف هذا الملف؟';
 
   @override
   String get contract_cancel => 'إلغاء';
@@ -841,8 +836,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get contract_confirmApprove => 'تأكيد الاعتماد';
 
   @override
-  String get contract_confirmApproveMsg =>
-      'هل أنت متأكد أنك تريد اعتماد هذا العقد؟';
+  String get contract_confirmApproveMsg => 'هل أنت متأكد أنك تريد اعتماد هذا العقد؟';
 
   @override
   String get contract_confirmAction => 'تأكيد';
@@ -951,6 +945,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get dashboard_settings => 'الإعدادات';
+
+  @override
+  String get dashboardRoleOwner => 'صاحب الحساب';
+
+  @override
+  String get dashboardRoleAssistant => 'مساعد';
 
   @override
   String get dashboard_more => 'المزيد';
@@ -1130,8 +1130,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings_phone => 'رقم الهاتف';
 
   @override
-  String get settings_contactOwnerForEmail =>
-      'لتغيير الإيميل أو الباسورد تواصل مع صاحب الحساب';
+  String get settings_contactOwnerForEmail => 'لتغيير الإيميل أو الباسورد تواصل مع صاحب الحساب';
 
   @override
   String get settings_dateOfBirth => 'تاريخ الميلاد';
@@ -1170,8 +1169,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get deleteAccount_button => 'حذف الحساب';
 
   @override
-  String get deleteAccount_hint =>
-      'احذف حسابك والبيانات الشخصية المرتبطة به نهائيًا.';
+  String get deleteAccount_hint => 'احذف حسابك والبيانات الشخصية المرتبطة به نهائيًا.';
 
   @override
   String get deleteAccount_title => 'حذف حسابك؟';
@@ -1181,8 +1179,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'سيتم حذف حسابك والبيانات الشخصية المرتبطة به نهائيًا، وتسجيل خروجك من جميع الأجهزة. لا يمكن التراجع عن هذا الإجراء.\n\nقد نحتفظ بالعقود والتوقيعات وسجلات الدفع للمدة التي يفرضها القانون، ثم يتم حذفها.';
 
   @override
-  String get deleteAccount_teamWarning =>
-      'سيفقد أعضاء الفريق الذين أضفتهم صلاحية الدخول أيضًا.';
+  String get deleteAccount_teamWarning => 'سيفقد أعضاء الفريق الذين أضفتهم صلاحية الدخول أيضًا.';
 
   @override
   String get deleteAccount_passwordLabel => 'أدخل كلمة المرور للتأكيد';
@@ -1376,8 +1373,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get approvals_confirmApproval => 'تأكيد الاعتماد';
 
   @override
-  String get approvals_confirmApprovalMsg =>
-      'هل أنت متأكد أنك تريد اعتماد هذا؟';
+  String get approvals_confirmApprovalMsg => 'هل أنت متأكد أنك تريد اعتماد هذا؟';
 
   @override
   String get approvals_cancel => 'إلغاء';
@@ -1920,8 +1916,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get clientDetail_newPassword => 'كلمة المرور الجديدة';
 
   @override
-  String get clientDetail_leaveBlank =>
-      'اتركه فارغاً للاحتفاظ بكلمة المرور الحالية';
+  String get clientDetail_leaveBlank => 'اتركه فارغاً للاحتفاظ بكلمة المرور الحالية';
 
   @override
   String get clientDetail_subUsers => 'المستخدمون الفرعيون';
@@ -1951,8 +1946,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createClient_passwordCopied => 'تم نسخ كلمة المرور';
 
   @override
-  String get createClient_credentialsSent =>
-      'تم إرسال بيانات الدخول إلى العميل';
+  String get createClient_credentialsSent => 'تم إرسال بيانات الدخول إلى العميل';
 
   @override
   String get createClient_ok => 'حسناً';
@@ -1994,8 +1988,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createClient_autoPassword => 'إنشاء كلمة مرور تلقائياً';
 
   @override
-  String get createClient_autoPasswordHint =>
-      'سيتم إنشاء كلمة مرور قوية تلقائياً';
+  String get createClient_autoPasswordHint => 'سيتم إنشاء كلمة مرور قوية تلقائياً';
 
   @override
   String get createClient_notes => 'ملاحظات';
@@ -2133,8 +2126,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createManager_autoPassword => 'إنشاء كلمة مرور تلقائياً';
 
   @override
-  String get createManager_autoPasswordHint =>
-      'سيتم إنشاء كلمة مرور قوية تلقائياً';
+  String get createManager_autoPasswordHint => 'سيتم إنشاء كلمة مرور قوية تلقائياً';
 
   @override
   String get createManager_resetPassword => 'إعادة تعيين كلمة المرور';
@@ -2143,8 +2135,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createManager_newPassword => 'كلمة المرور الجديدة';
 
   @override
-  String get createManager_leaveBlank =>
-      'اتركه فارغاً للاحتفاظ بكلمة المرور الحالية';
+  String get createManager_leaveBlank => 'اتركه فارغاً للاحتفاظ بكلمة المرور الحالية';
 
   @override
   String get createManager_saveChanges => 'حفظ التغييرات';
@@ -2162,8 +2153,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get accountManagers_deleteTitle => 'حذف مدير';
 
   @override
-  String get accountManagers_deleteConfirmation =>
-      'هل أنت متأكد أنك تريد حذف هذا المدير؟';
+  String get accountManagers_deleteConfirmation => 'هل أنت متأكد أنك تريد حذف هذا المدير؟';
 
   @override
   String get accountManagers_cancel => 'إلغاء';
@@ -2201,8 +2191,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminSettings_saveFailed => 'فشل حفظ الإعدادات';
 
   @override
-  String get adminSettings_enterValidPercentage =>
-      'يرجى إدخال نسبة صحيحة (0-100)';
+  String get adminSettings_enterValidPercentage => 'يرجى إدخال نسبة صحيحة (0-100)';
 
   @override
   String get adminSettings_taxSaved => 'تم حفظ إعدادات الضريبة';
@@ -2289,8 +2278,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminSettings_companyTax => 'ضريبة الشركة';
 
   @override
-  String get adminSettings_taxDescription =>
-      'نسبة الضريبة المطبقة على جميع العقود';
+  String get adminSettings_taxDescription => 'نسبة الضريبة المطبقة على جميع العقود';
 
   @override
   String get adminSettings_taxPercentage => 'نسبة الضريبة (%)';
@@ -2302,8 +2290,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminSettings_clauses => 'بنود العقد';
 
   @override
-  String get adminSettings_clausesDescription =>
-      'البنود الثابتة تُضاف تلقائيًا إلى أي عقد جديد.';
+  String get adminSettings_clausesDescription => 'البنود الثابتة تُضاف تلقائيًا إلى أي عقد جديد.';
 
   @override
   String get adminSettings_addClause => 'إضافة بند';
@@ -2348,8 +2335,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminSettings_clauseDeleted => 'تم حذف البند';
 
   @override
-  String get adminSettings_clauseDeleteConfirm =>
-      'حذف هذا البند؟ العقود الحالية لن تتأثر.';
+  String get adminSettings_clauseDeleteConfirm => 'حذف هذا البند؟ العقود الحالية لن تتأثر.';
 
   @override
   String get adminSettings_clauseActive => 'مفعّل';
@@ -2597,8 +2583,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get contractBuilder_createdAndSent => 'تم إنشاء وإرسال العقد بنجاح';
 
   @override
-  String get contractBuilder_createdSendFailed =>
-      'تم إنشاء العقد ولكن فشل الإرسال';
+  String get contractBuilder_createdSendFailed => 'تم إنشاء العقد ولكن فشل الإرسال';
 
   @override
   String get contractBuilder_updateFailed => 'فشل تحديث العقد';
@@ -2664,15 +2649,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get onboarding_waitingContract => 'انتظار العقد';
 
   @override
-  String get onboarding_waitingContractMsg =>
-      'يتم إعداد العقد الخاص بك. سيتم إعلامك عند جاهزيته.';
+  String get onboarding_waitingContractMsg => 'يتم إعداد العقد الخاص بك. سيتم إعلامك عند جاهزيته.';
 
   @override
   String get onboarding_waitingCompanyApproval => 'انتظار اعتماد الشركة';
 
   @override
-  String get onboarding_waitingCompanyApprovalMsg =>
-      'تقوم الشركة بمراجعة عقدك. يرجى انتظار ردهم.';
+  String get onboarding_waitingCompanyApprovalMsg => 'تقوم الشركة بمراجعة عقدك. يرجى انتظار ردهم.';
 
   @override
   String get onboarding_reviewingPayment => 'مراجعة الدفع';
@@ -2688,6 +2671,46 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get onboarding_signNow => 'وقع الآن';
+
+  @override
+  String get onboardingNextStepsTitle => 'الخطوات الجاية';
+
+  @override
+  String get onboardingNotifyHint => 'هنبلّغك، مش محتاج تسيب التطبيق مفتوح.';
+
+  @override
+  String onboardingStepOf(int current, int total) {
+    return 'الخطوة $current من $total';
+  }
+
+  @override
+  String get onboardingAdditionalContract => 'عقد إضافي';
+
+  @override
+  String get onboardingDownloadPdf => 'تحميل PDF';
+
+  @override
+  String get onboardingPreviewShort => 'معاينة';
+
+  @override
+  String get onboardingDocUploaded => 'اترفع';
+
+  @override
+  String get onboardingDocMissing => 'ناقص';
+
+  @override
+  String get onboardingPaymentSent => 'الدفعة اتبعتت';
+
+  @override
+  String get onboardingUnderReview => 'قيد المراجعة';
+
+  @override
+  String onboardingClauseCount(int count) {
+    return '$count بنود';
+  }
+
+  @override
+  String get onboardingSigUpload => 'رفع';
 
   @override
   String get onboarding_contactSupport => 'اتصل بالدعم';
@@ -2845,20 +2868,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get onboarding_paymentProofStage => 'إثبات الدفع';
 
   @override
-  String get onboarding_waitingContractSendMsg =>
-      'سيتم إرسال العقد إليك للتوقيع قريباً';
+  String get onboarding_waitingContractSendMsg => 'سيتم إرسال العقد إليك للتوقيع قريباً';
 
   @override
-  String get onboarding_waitingCompanyReviewMsg =>
-      'يقوم فريق الشركة بمراجعة طلبك';
+  String get onboarding_waitingCompanyReviewMsg => 'يقوم فريق الشركة بمراجعة طلبك';
 
   @override
-  String get onboarding_reviewContractPrompt =>
-      'يرجى مراجعة العقد وإبداء موافقتك';
+  String get onboarding_reviewContractPrompt => 'يرجى مراجعة العقد وإبداء موافقتك';
 
   @override
-  String get onboarding_confirmPaymentToActivate =>
-      'يرجى تأكيد الدفع لتفعيل مساحة العمل';
+  String get onboarding_confirmPaymentToActivate => 'يرجى تأكيد الدفع لتفعيل مساحة العمل';
 
   @override
   String onboarding_failedWithError(Object error) {
@@ -2988,8 +3007,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noActiveMeeting => 'لا يوجد اجتماع نشط';
 
   @override
-  String get chatUnavailable =>
-      'المحادثة غير متاحة — في انتظار تفعيل المساحة بعد الدفع';
+  String get chatUnavailable => 'المحادثة غير متاحة — في انتظار تفعيل المساحة بعد الدفع';
 
   @override
   String get editMessage => 'تعديل الرسالة';
@@ -3164,8 +3182,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get approveContract => 'موافقة على العقد';
 
   @override
-  String get confirmApproveContract =>
-      'هل أنت متأكد من الموافقة على هذا العقد؟';
+  String get confirmApproveContract => 'هل أنت متأكد من الموافقة على هذا العقد؟';
 
   @override
   String get requiredEdits => 'التعديلات المطلوبة';
@@ -3210,14 +3227,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get payments_methodMobileWallet => 'محفظة موبايل';
 
   @override
-  String payments_remainingSummary(
-      Object currency, Object remaining, Object total) {
+  String get payments_methodCheque => 'شيك';
+
+  @override
+  String payments_remainingSummary(Object currency, Object remaining, Object total) {
     return 'من أصل $total $currency — متبقي $remaining';
   }
 
   @override
-  String payments_taxSummary(
-      Object amount, Object currency, Object percentage, Object value) {
+  String payments_taxSummary(Object amount, Object currency, Object percentage, Object value) {
     return 'القيمة: $value $currency + ضريبة $percentage% = $amount $currency';
   }
 
@@ -3367,8 +3385,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get approveContractTitle => 'الموافقة على العقد';
 
   @override
-  String get approveContractConfirm =>
-      'هل أنت متأكد من الموافقة على هذا العقد؟';
+  String get approveContractConfirm => 'هل أنت متأكد من الموافقة على هذا العقد؟';
 
   @override
   String get signatureRequiredTitle => 'التوقيع مطلوب';
@@ -3377,14 +3394,28 @@ class AppLocalizationsAr extends AppLocalizations {
   String get signatureRequiredMessage => 'لازم تحفظ توقيعك الأول قبل ما توافق.';
 
   @override
-  String get signatureRequiredSubUserMessage =>
-      'الحساب الرئيسي لازم يحفظ التوقيع الأول.';
+  String get signatureRequiredSubUserMessage => 'الحساب الرئيسي لازم يحفظ التوقيع الأول.';
 
   @override
   String get signatureRequiredAction => 'توقيع الآن';
 
   @override
   String get editReasonHint => 'اذكر سبب التعديل...';
+
+  @override
+  String get contractStepSent => 'اتبعت';
+
+  @override
+  String get contractStepYouApproved => 'وافقت';
+
+  @override
+  String get contractStepCompanyApproved => 'وافقت الشركة';
+
+  @override
+  String get contractStepActive => 'ساري';
+
+  @override
+  String get contractDownloadPdfShort => 'PDF';
 
   @override
   String get awaitingContracts => 'في انتظار العقود...';
@@ -3874,8 +3905,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get calendarContractStartLegend => 'بداية عقد';
 
   @override
-  String calendarDateFormat(
-      Object day, Object month, Object weekday, Object year) {
+  String calendarDateFormat(Object day, Object month, Object weekday, Object year) {
     return '$weekday، $year/$month/$day';
   }
 
@@ -3904,8 +3934,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get chatApprovalAlreadyRequested => 'تم طلب موافقة العميل مسبقاً';
 
   @override
-  String get chatApprovalRequestedHint =>
-      'سيُطلب من العميل الموافقة على هذه الرسالة';
+  String get chatApprovalRequestedHint => 'سيُطلب من العميل الموافقة على هذه الرسالة';
 
   @override
   String get chatApprovalRequestFailed => 'فشل طلب الموافقة';
@@ -4010,8 +4039,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get chatUpcomingMeeting => 'اجتماع قادم';
 
   @override
-  String get chatWorkspaceLocked =>
-      'المحادثة غير متاحة — بانتظار تفعيل مساحة العمل';
+  String get chatWorkspaceLocked => 'المحادثة غير متاحة — بانتظار تفعيل مساحة العمل';
 
   @override
   String get chatYesterday => 'أمس';
@@ -4120,43 +4148,35 @@ class AppLocalizationsAr extends AppLocalizations {
   String get contractAreYouSure => 'هل أنت متأكد؟';
 
   @override
-  String get contractBuilderClauseFallback1 =>
-      'يقر الطرفان بأهليتهما القانونية للتعاقد';
+  String get contractBuilderClauseFallback1 => 'يقر الطرفان بأهليتهما القانونية للتعاقد';
 
   @override
-  String get contractBuilderClauseFallback2 =>
-      'يلتزم الطرف الأول بتقديم الخدمات المتفق عليها';
+  String get contractBuilderClauseFallback2 => 'يلتزم الطرف الأول بتقديم الخدمات المتفق عليها';
 
   @override
-  String get contractBuilderClauseFallback3 =>
-      'يلتزم الطرف الثاني بسداد القيمة المتفق عليها';
+  String get contractBuilderClauseFallback3 => 'يلتزم الطرف الثاني بسداد القيمة المتفق عليها';
 
   @override
   String get contractBuilderClauseFallback4 => 'يلتزم الطرفان بالسرية التامة';
 
   @override
-  String get contractBuilderClauseOptional1 =>
-      'يحق للطرفين إنهاء العقد بإشعار خطي قبل 30 يوماً';
+  String get contractBuilderClauseOptional1 => 'يحق للطرفين إنهاء العقد بإشعار خطي قبل 30 يوماً';
 
   @override
   String get contractBuilderClauseOptional2 =>
       'لا تتحمل الشركة مسؤولية أي تأخير ناتج عن ظروف قاهرة';
 
   @override
-  String get contractBuilderClauseOptional3 =>
-      'تكون حقوق الملكية الفكرية مملوكة للطرف الأول';
+  String get contractBuilderClauseOptional3 => 'تكون حقوق الملكية الفكرية مملوكة للطرف الأول';
 
   @override
-  String get contractBuilderClauseOptional4 =>
-      'يحق للطرف الأول تعديل الأسعار بعد 12 شهراً';
+  String get contractBuilderClauseOptional4 => 'يحق للطرف الأول تعديل الأسعار بعد 12 شهراً';
 
   @override
-  String get contractBuilderClauseOptional5 =>
-      'يخضع العقد للقوانين واللوائح المحلية';
+  String get contractBuilderClauseOptional5 => 'يخضع العقد للقوانين واللوائح المحلية';
 
   @override
-  String get contractBuilderClauseOptional6 =>
-      'يتم حل النزاعات عن طريق التحكيم';
+  String get contractBuilderClauseOptional6 => 'يتم حل النزاعات عن طريق التحكيم';
 
   @override
   String get contractBuilderCreateAndSend => 'إنشاء وإرسال';
@@ -4165,8 +4185,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get contractBuilderCreatedAndSent => '✅ تم إنشاء وإرسال العقد';
 
   @override
-  String get contractBuilderCreatedSendFailed =>
-      '⚠️ تم إنشاء العقد ولكن فشل الإرسال';
+  String get contractBuilderCreatedSendFailed => '⚠️ تم إنشاء العقد ولكن فشل الإرسال';
 
   @override
   String get contractBuilderCreateExtraTitle => 'إنشاء عقد خدمة إضافية';
@@ -4312,8 +4331,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createClientAutoPassword => 'كلمة المرور التلقائية';
 
   @override
-  String get createClientAutoPasswordEmailHint =>
-      'سيتم إرسالها للعميل عبر الإيميل';
+  String get createClientAutoPasswordEmailHint => 'سيتم إرسالها للعميل عبر الإيميل';
 
   @override
   String get createClientCancel => 'إلغاء';
@@ -4331,8 +4349,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createClientCreateButton => 'إنشاء العميل';
 
   @override
-  String get createClientCredentialsSent =>
-      'تم إرسال بيانات الدخول للعميل عبر البريد الإلكتروني';
+  String get createClientCredentialsSent => 'تم إرسال بيانات الدخول للعميل عبر البريد الإلكتروني';
 
   @override
   String get createClientDateOfBirth => 'تاريخ الميلاد';
@@ -4707,8 +4724,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentsApproveConfirmMsg => 'هل أنت متأكد من اعتماد هذه الدفعة؟';
 
   @override
-  String get paymentsApprovedWorkspaceActive =>
-      '✅ تم اعتماد الدفعة — مساحة العمل نشطة';
+  String get paymentsApprovedWorkspaceActive => '✅ تم اعتماد الدفعة — مساحة العمل نشطة';
 
   @override
   String get paymentsApprovedWorkspacePending =>
@@ -4721,8 +4737,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentsClear => 'مسح';
 
   @override
-  String get paymentsClearInstallmentConfirm =>
-      'هل أنت متأكد من مسح هذا القسط؟';
+  String get paymentsClearInstallmentConfirm => 'هل أنت متأكد من مسح هذا القسط؟';
 
   @override
   String get paymentsClearInstallmentTitle => 'مسح القسط';
@@ -4797,6 +4812,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentsMethodMobileWallet => 'محفظة موبايل';
 
   @override
+  String get paymentsMethodCheque => 'شيك';
+
+  @override
   String get paymentsMethodSwift => 'تحويل SWIFT';
 
   @override
@@ -4855,8 +4873,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentsRejectPayment => 'رفض الدفعة';
 
   @override
-  String paymentsRemainingSummary(
-      Object currency, Object remaining, Object total) {
+  String paymentsRemainingSummary(Object currency, Object remaining, Object total) {
     return 'من أصل $total $currency — متبقي $remaining';
   }
 
@@ -5079,8 +5096,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get saClientsNoClients => 'لا يوجد عملاء';
 
   @override
-  String get saClientsSearchHintPhone =>
-      'بحث بالاسم أو رقم الهاتف أو البريد...';
+  String get saClientsSearchHintPhone => 'بحث بالاسم أو رقم الهاتف أو البريد...';
 
   @override
   String get saClientsSelectManager => 'اختر المدير';
@@ -5306,8 +5322,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get clientProfileCheckInSuccess => 'تم تحديث الموقع بنجاح';
 
   @override
-  String get clientProfileCheckInFailed =>
-      'تعذر الحصول على الموقع. تحقق من الصلاحيات.';
+  String get clientProfileCheckInFailed => 'تعذر الحصول على الموقع. تحقق من الصلاحيات.';
 
   @override
   String get clientProfileOpenMaps => 'فتح في خرائط جوجل';
@@ -5392,8 +5407,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get register_title => 'إنشاء حساب';
 
   @override
-  String get register_subtitle =>
-      'اكتب بيانات شركتك. فريقنا بيراجع كل طلب قبل تفعيل الحساب.';
+  String get register_subtitle => 'اكتب بيانات شركتك. فريقنا بيراجع كل طلب قبل تفعيل الحساب.';
 
   @override
   String get register_sectionCompany => 'الشركة';
@@ -5490,8 +5504,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'تم إرسال طلب التسجيل. المسؤول هيراجع الطلب وهتوصلك رسالة على بريدك الإلكتروني أول ما يتم اعتماد الحساب.';
 
   @override
-  String get register_successNote =>
-      'المراجعة بتاخد عادةً من يوم لـ يومين عمل.';
+  String get register_successNote => 'المراجعة بتاخد عادةً من يوم لـ يومين عمل.';
 
   @override
   String get register_successAction => 'الرجوع لتسجيل الدخول';
@@ -5543,4 +5556,594 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get signatureDrawSignature => 'رسم التوقيع';
+
+  @override
+  String get workspaceTabTeam => 'الفريق';
+
+  @override
+  String get staffRoleLabel => 'موظف';
+
+  @override
+  String get staffNavTitle => 'موظفو الشركة';
+
+  @override
+  String get staffManageButton => 'الموظفون';
+
+  @override
+  String get staffMyClientsTitle => 'عملائي';
+
+  @override
+  String get staffMyClientsEmpty => 'لم يتم تعيين أي عميل لك بعد.';
+
+  @override
+  String get staffSearchHint => 'بحث عن عميل';
+
+  @override
+  String get staffEmpty => 'لا يوجد موظفون بعد.';
+
+  @override
+  String get staffAdd => 'إضافة موظف';
+
+  @override
+  String get staffEditAction => 'تعديل';
+
+  @override
+  String get staffFieldName => 'الاسم';
+
+  @override
+  String get staffFieldEmail => 'البريد الإلكتروني';
+
+  @override
+  String get staffFieldPhone => 'الهاتف';
+
+  @override
+  String get staffFieldDob => 'تاريخ الميلاد';
+
+  @override
+  String get staffFieldPassword => 'كلمة المرور';
+
+  @override
+  String get staffSendEmail => 'إرسال بيانات الدخول بالإيميل';
+
+  @override
+  String get staffSaveAction => 'حفظ';
+
+  @override
+  String get staffChangePassword => 'تغيير كلمة المرور';
+
+  @override
+  String get staffArchiveAction => 'أرشفة';
+
+  @override
+  String get staffUnarchiveAction => 'فك الأرشفة';
+
+  @override
+  String get staffArchiveConfirm => 'أرشفة هذا الموظف؟ سيتم تسجيل خروجه وسحب صلاحياته فورًا.';
+
+  @override
+  String get staffUnarchiveConfirm => 'استعادة هذا الموظف؟ سيتمكن من تسجيل الدخول مرة أخرى.';
+
+  @override
+  String get staffShowArchived => 'عرض المؤرشفين';
+
+  @override
+  String get staffClientsLabel => 'العملاء';
+
+  @override
+  String get staffNoClients => 'غير مرتبط بأي عميل حتى الآن.';
+
+  @override
+  String get staffLoadFailed => 'تعذّر تحميل قائمة الموظفين.';
+
+  @override
+  String get staffSaveFailed => 'تعذّر حفظ التغييرات.';
+
+  @override
+  String get staffCreatedMsg => 'تمت إضافة الموظف.';
+
+  @override
+  String get staffUpdatedMsg => 'تم تحديث بيانات الموظف.';
+
+  @override
+  String get staffArchivedMsg => 'تمت أرشفة الموظف.';
+
+  @override
+  String get staffUnarchivedMsg => 'تمت استعادة الموظف.';
+
+  @override
+  String get staffPasswordChangedMsg => 'تم تغيير كلمة المرور وتسجيل خروج الموظف.';
+
+  @override
+  String get staffArchivedBadge => 'مؤرشف';
+
+  @override
+  String get teamTabHint =>
+      'اختر موظفي الشركة الذين يعملون على هذا العميل. يمكنهم المحادثة وإرسال طلبات الموافقة وحضور الاجتماعات لهذا العميل فقط.';
+
+  @override
+  String get teamTabEmpty => 'لا يوجد موظفون نشطون بعد. يضيفهم السوبر أدمن من شاشة الموظفين.';
+
+  @override
+  String get teamTabAssign => 'تعيين';
+
+  @override
+  String get teamTabUnassign => 'إزالة';
+
+  @override
+  String get teamTabLoadFailed => 'تعذّر تحميل الفريق.';
+
+  @override
+  String get teamTabSaveFailed => 'تعذّر تحديث الفريق.';
+
+  @override
+  String get teamTabAssignedLabel => 'معيَّن';
+
+  @override
+  String get staffClientsLoadFailed => 'تعذّر تحميل عملائك.';
+
+  @override
+  String get mtTitle => 'الفريق';
+
+  @override
+  String get mtSubtitle => 'موظفو الشركة الذين يعملون على عملائك.';
+
+  @override
+  String get mtAddFromCompany => 'إضافة من موظفي الشركة';
+
+  @override
+  String get mtHideCompany => 'إخفاء موظفي الشركة';
+
+  @override
+  String get mtCompanyStaffTitle => 'موظفو الشركة';
+
+  @override
+  String get mtNotInAnyTeam => 'ليس في أي فريق';
+
+  @override
+  String mtInTeams(Object names) {
+    return 'في فريق: $names';
+  }
+
+  @override
+  String mtAddN(int n) {
+    return 'إضافة $n لفريقي';
+  }
+
+  @override
+  String get mtMyTeam => 'فريقي';
+
+  @override
+  String get mtLinkClient => 'ربط بعميل';
+
+  @override
+  String get mtRemoveFromTeam => 'إزالة من الفريق';
+
+  @override
+  String get mtNoClientsLinked => 'غير مربوط بأي عميل من عملائك بعد.';
+
+  @override
+  String get mtEdit => 'تعديل';
+
+  @override
+  String get mtUnlink => 'إلغاء الربط';
+
+  @override
+  String get mtPickClient => 'العميل';
+
+  @override
+  String get mtPickClientHint => 'اختر عميلاً';
+
+  @override
+  String get mtPermOnClient => 'ما يمكنه فعله مع هذا العميل';
+
+  @override
+  String get mtPermChat => 'المحادثة';
+
+  @override
+  String get mtPermApprovals => 'الموافقات';
+
+  @override
+  String get mtPermMeetings => 'الاجتماعات';
+
+  @override
+  String get mtSeeChat => 'رؤية المحادثة';
+
+  @override
+  String get mtSendChat => 'إرسال الرسائل';
+
+  @override
+  String get mtSeeApprovals => 'رؤية الموافقات';
+
+  @override
+  String get mtRequestApprovals => 'طلب موافقات';
+
+  @override
+  String get mtSeeMeetings => 'رؤية الاجتماعات';
+
+  @override
+  String get mtJoinMeetings => 'حضور الاجتماعات';
+
+  @override
+  String get mtDepNote => 'إيقاف \"الرؤية\" يوقف الإجراء التابع لها تلقائيًا.';
+
+  @override
+  String get mtSave => 'حفظ';
+
+  @override
+  String get mtCancel => 'إلغاء';
+
+  @override
+  String get mtView => 'عرض';
+
+  @override
+  String get mtSend => 'إرسال';
+
+  @override
+  String get mtRequest => 'طلب';
+
+  @override
+  String get mtJoin => 'انضمام';
+
+  @override
+  String get mtNone => 'بلا صلاحيات';
+
+  @override
+  String get mtRemoveTitle => 'إزالة من فريقك؟';
+
+  @override
+  String mtRemoveBody(int count, Object names) {
+    return 'سيُلغى تعيينه من $count من عملائك: $names. فرق المديرين الآخرين لا تتأثر.';
+  }
+
+  @override
+  String get mtRemoveBodyNone => 'غير معيَّن على أي من عملائك.';
+
+  @override
+  String get mtRemoveConfirm => 'إزالة';
+
+  @override
+  String get mtLoadFailed => 'تعذّر تحميل الفريق.';
+
+  @override
+  String get mtSaveFailed => 'تعذّر حفظ التغييرات.';
+
+  @override
+  String get mtNoClientsToLink => 'كل عملائك مربوطون بالفعل.';
+
+  @override
+  String get mtEmptyTeam => 'فريقك فارغ. أضف أشخاصًا من موظفي الشركة.';
+
+  @override
+  String get mtNotMine => 'ليس في فريقك';
+
+  @override
+  String get mtNotMineHint => 'تم تعيينه قبل انتقال هذا العميل إليك.';
+
+  @override
+  String get mtAddMine => 'إضافة لفريقي';
+
+  @override
+  String get mtOpenTeamPage => 'افتح صفحة الفريق';
+
+  @override
+  String get mtEditPerms => 'تعديل الصلاحيات';
+
+  @override
+  String get mtNoOtherStaff => 'لا يوجد موظفو شركة آخرون للإضافة.';
+
+  @override
+  String get teamTabHintManager =>
+      'أعضاء فريقك. عيّن أو ألغِ التعيين من هنا — الصلاحيات تُحدَّد من صفحة الفريق.';
+
+  @override
+  String get teamTabEmptyManager => 'لا أحد في فريقك بعد. أضف أشخاصًا من صفحة الفريق.';
+
+  @override
+  String get chatStaffReadOnly => 'يمكنك قراءة هذه المحادثة دون الكتابة فيها.';
+
+  @override
+  String get amRoleSuperAdmin => 'سوبر أدمن';
+
+  @override
+  String get amRoleManager => 'مدير حساب';
+
+  @override
+  String get amRoleAssistant => 'مساعد مدير';
+
+  @override
+  String get amGreetMorning => 'صباح الخير';
+
+  @override
+  String get amGreetAfternoon => 'نهارك سعيد';
+
+  @override
+  String get amGreetEvening => 'مساء الخير';
+
+  @override
+  String get amHomeSubSa => 'الوكالة اليوم.';
+
+  @override
+  String get amHomeSubAm => 'ده اللي محتاجك النهاردة.';
+
+  @override
+  String get amKpiNeedAction => 'محتاجة إجراء منك';
+
+  @override
+  String get amOpen => 'فتح';
+
+  @override
+  String get amWaitingOnYou => 'مستنيين ردّك';
+
+  @override
+  String get financeTitle => 'المالية';
+
+  @override
+  String get financeApprovedTotal => 'إجمالي المعتمد';
+
+  @override
+  String get financePendingCount => 'قيد المراجعة';
+
+  @override
+  String get financeApprovedCount => 'معتمدة';
+
+  @override
+  String get financeAllCount => 'كل المدفوعات';
+
+  @override
+  String financePaymentsHint(int count) {
+    return '$count مدفوعة';
+  }
+
+  @override
+  String get financeSearchHint => 'ابحث بالعميل أو العقد أو المبلغ';
+
+  @override
+  String get financeLoadMore => 'عرض المزيد';
+
+  @override
+  String get financeFailed => 'تعذّر تحميل المدفوعات';
+
+  @override
+  String get amRoleStaff => 'عضو فريق';
+
+  @override
+  String notificationsUnreadCount(int count) {
+    return '$count غير مقروء';
+  }
+
+  @override
+  String get notificationsAllRead => 'مفيش جديد';
+
+  @override
+  String get notificationsEmptyTitle => 'مفيش جديد.';
+
+  @override
+  String get notificationsEmptyHint => 'لما يحصل أي حاجة عند أحد عملائك هتظهر هنا.';
+
+  @override
+  String get notificationsLoadFailed => 'تعذّر تحميل إشعاراتك.';
+
+  @override
+  String get notificationsDelete => 'حذف';
+
+  @override
+  String get notificationsGroupToday => 'النهارده';
+
+  @override
+  String get notificationsGroupYesterday => 'إمبارح';
+
+  @override
+  String get notificationsGroupWeek => 'الأسبوع ده';
+
+  @override
+  String get paymentsSummaryContracted => 'قيمة العقود';
+
+  @override
+  String get paymentsSummaryRemaining => 'المتبقي';
+
+  @override
+  String get reportsEyebrow => 'نظرة عامة';
+
+  @override
+  String get amKpiRevenue => 'الإيراد';
+
+  @override
+  String get amKpiUnreadMessages => 'رسائل غير مقروءة';
+
+  @override
+  String amKpiAcrossManagers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'على $count مدير',
+      few: 'على $count مديرين',
+      two: 'على مديرين',
+      one: 'مدير واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String amKpiAwaitingApproval(int count) {
+    return '$count في انتظار الموافقة';
+  }
+
+  @override
+  String get amRecentActivity => 'آخر النشاط';
+
+  @override
+  String get amStNeedsReview => 'محتاج مراجعتك';
+
+  @override
+  String get amStCompanyApproval => 'موافقة الشركة';
+
+  @override
+  String get amStAwaitingClient => 'في انتظار العميل';
+
+  @override
+  String get amPaymentProof => 'إثبات دفع';
+
+  @override
+  String amAgeMin(int n) {
+    return '$n د';
+  }
+
+  @override
+  String amAgeHour(int n) {
+    return '$n س';
+  }
+
+  @override
+  String get amAgeToday => 'النهارده';
+
+  @override
+  String amClientsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count عميل',
+      few: '$count عملاء',
+      two: 'عميلين',
+      one: 'عميل واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get approvalsEyebrow => 'الوارد';
+
+  @override
+  String get amNewClient => 'عميل جديد';
+
+  @override
+  String get clientsEyebrowSa => 'الدليل';
+
+  @override
+  String get clientsEyebrowAm => 'عملاءك';
+
+  @override
+  String get contractStepClientApproved => 'العميل وافق';
+
+  @override
+  String get contractKindMain => 'أساسي';
+
+  @override
+  String get contractKindAdditional => 'إضافي';
+
+  @override
+  String get teamEyebrow => 'الفريق';
+
+  @override
+  String get amNewManager => 'مدير جديد';
+
+  @override
+  String get amCanApproveContracts => 'يقدر يوافق على العقود';
+
+  @override
+  String get amDeactivate => 'إيقاف';
+
+  @override
+  String amDeactivateConfirm(String name) {
+    return 'إيقاف $name؟ هيتعمله تسجيل خروج من كل الأجهزة.';
+  }
+
+  @override
+  String amAssignedClients(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count عميل',
+      few: '$count عملاء',
+      two: 'عميلين',
+      one: 'عميل واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get staffNewMember => 'عضو فريق جديد';
+
+  @override
+  String get staffPasswordShort => 'كلمة السر';
+
+  @override
+  String get financeEyebrow => 'الفلوس';
+
+  @override
+  String get auditEyebrow => 'السجل';
+
+  @override
+  String get settingsEyebrow => 'الحساب';
+
+  @override
+  String get settingsLead => 'ملفك الشخصي واللغة.';
+
+  @override
+  String get settingsLanguage => 'اللغة';
+
+  @override
+  String get settingsSigUsedFor => 'بيُستخدم لما توافق على العقود كشركة.';
+
+  @override
+  String get clausesShowFewer => 'عرض أقل';
+
+  @override
+  String get clausesLead => 'الثابتة بتدخل كل عقد، والاختيارية بيختارها المدير لكل عقد.';
+
+  @override
+  String get settingsDisplayName => 'الاسم الظاهر';
+
+  @override
+  String get clientsNewEyebrow => 'الدليل';
+
+  @override
+  String get credsTitle => 'العميل اتعمل';
+
+  @override
+  String onboardingSentOn(String date) {
+    return 'اتبعت $date';
+  }
+
+  @override
+  String get onboardingEditLabel => 'عايز تغيّر إيه؟';
+
+  @override
+  String get onboardingEditHint => 'مثلاً: ياريت الدفع يتقسم على قسطين';
+
+  @override
+  String get onboardingSendRequest => 'إرسال الطلب';
+
+  @override
+  String get onboardingYourRequest => 'طلبك';
+
+  @override
+  String get onboardingSendPaymentTitle => 'إرسال دفعة';
+
+  @override
+  String get onboardingDropTitle => 'اضغط عشان تضيف ملفات';
+
+  @override
+  String get onboardingDropHint => 'صور من المعرض';
+
+  @override
+  String get signatureLead => 'توقيعك الإلكتروني، بيُستخدم لما توافق على العقود والطلبات.';
+
+  @override
+  String get signatureNone => 'مفيش توقيع محفوظ لسه';
+
+  @override
+  String get teamLead =>
+      'أشخاص يقدروا يشتغلوا في مساحة العمل، كل واحد بالصلاحيات اللي إنت تديها له بس.';
+
+  @override
+  String get teamAdd => 'إضافة عضو';
+
+  @override
+  String get teamAddTitle => 'إضافة عضو للفريق';
+
+  @override
+  String get teamSendLogin => 'ابعت بيانات الدخول على الإيميل';
+
+  @override
+  String get settingsClientLead => 'بياناتك واللغة.';
 }

@@ -62,8 +62,7 @@ import 'app_localizations_en.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -71,8 +70,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -93,10 +91,7 @@ abstract class AppLocalizations {
   ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[
-    Locale('ar'),
-    Locale('en')
-  ];
+  static const List<Locale> supportedLocales = <Locale>[Locale('ar'), Locale('en')];
 
   /// No description provided for @appTitle.
   ///
@@ -1957,6 +1952,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings'**
   String get dashboard_settings;
+
+  /// No description provided for @dashboardRoleOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Account owner'**
+  String get dashboardRoleOwner;
+
+  /// No description provided for @dashboardRoleAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant'**
+  String get dashboardRoleAssistant;
 
   /// No description provided for @dashboard_more.
   ///
@@ -5324,6 +5331,78 @@ abstract class AppLocalizations {
   /// **'Sign Now'**
   String get onboarding_signNow;
 
+  /// No description provided for @onboardingNextStepsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What happens next'**
+  String get onboardingNextStepsTitle;
+
+  /// No description provided for @onboardingNotifyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'We’ll notify you — no need to keep the app open.'**
+  String get onboardingNotifyHint;
+
+  /// No description provided for @onboardingStepOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String onboardingStepOf(int current, int total);
+
+  /// No description provided for @onboardingAdditionalContract.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional contract'**
+  String get onboardingAdditionalContract;
+
+  /// No description provided for @onboardingDownloadPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Download PDF'**
+  String get onboardingDownloadPdf;
+
+  /// No description provided for @onboardingPreviewShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get onboardingPreviewShort;
+
+  /// No description provided for @onboardingDocUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded'**
+  String get onboardingDocUploaded;
+
+  /// No description provided for @onboardingDocMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing'**
+  String get onboardingDocMissing;
+
+  /// No description provided for @onboardingPaymentSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment sent'**
+  String get onboardingPaymentSent;
+
+  /// No description provided for @onboardingUnderReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Under review'**
+  String get onboardingUnderReview;
+
+  /// No description provided for @onboardingClauseCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} clauses'**
+  String onboardingClauseCount(int count);
+
+  /// No description provided for @onboardingSigUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get onboardingSigUpload;
+
   /// No description provided for @onboarding_contactSupport.
   ///
   /// In en, this message translates to:
@@ -6284,19 +6363,23 @@ abstract class AppLocalizations {
   /// **'Mobile wallet'**
   String get payments_methodMobileWallet;
 
+  /// No description provided for @payments_methodCheque.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheque'**
+  String get payments_methodCheque;
+
   /// No description provided for @payments_remainingSummary.
   ///
   /// In en, this message translates to:
   /// **'of {total} {currency} — {remaining} remaining'**
-  String payments_remainingSummary(
-      Object currency, Object remaining, Object total);
+  String payments_remainingSummary(Object currency, Object remaining, Object total);
 
   /// No description provided for @payments_taxSummary.
   ///
   /// In en, this message translates to:
   /// **'Value: {value} {currency} + tax {percentage}% = {amount} {currency}'**
-  String payments_taxSummary(
-      Object amount, Object currency, Object percentage, Object value);
+  String payments_taxSummary(Object amount, Object currency, Object percentage, Object value);
 
   /// No description provided for @payments_dueDateFormat.
   ///
@@ -6579,6 +6662,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter the reason for editing...'**
   String get editReasonHint;
+
+  /// No description provided for @contractStepSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get contractStepSent;
+
+  /// No description provided for @contractStepYouApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'You approved'**
+  String get contractStepYouApproved;
+
+  /// No description provided for @contractStepCompanyApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Company approved'**
+  String get contractStepCompanyApproved;
+
+  /// No description provided for @contractStepActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get contractStepActive;
+
+  /// No description provided for @contractDownloadPdfShort.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF'**
+  String get contractDownloadPdfShort;
 
   /// No description provided for @awaitingContracts.
   ///
@@ -6967,7 +7080,7 @@ abstract class AppLocalizations {
   /// No description provided for @amViewAll.
   ///
   /// In en, this message translates to:
-  /// **'View All'**
+  /// **'View all'**
   String get amViewAll;
 
   /// No description provided for @amWorkspaceCreateFailed.
@@ -7538,8 +7651,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{weekday}, {year}/{month}/{day}'**
-  String calendarDateFormat(
-      Object day, Object month, Object weekday, Object year);
+  String calendarDateFormat(Object day, Object month, Object weekday, Object year);
 
   /// No description provided for @calendarEmpty.
   ///
@@ -9287,6 +9399,12 @@ abstract class AppLocalizations {
   /// **'Mobile Wallet'**
   String get paymentsMethodMobileWallet;
 
+  /// No description provided for @paymentsMethodCheque.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheque'**
+  String get paymentsMethodCheque;
+
   /// No description provided for @paymentsMethodSwift.
   ///
   /// In en, this message translates to:
@@ -9405,8 +9523,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'of {total} {currency} — {remaining} remaining'**
-  String paymentsRemainingSummary(
-      Object currency, Object remaining, Object total);
+  String paymentsRemainingSummary(Object currency, Object remaining, Object total);
 
   /// No description provided for @paymentsRequestHint.
   ///
@@ -10721,10 +10838,1083 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Draw Signature'**
   String get signatureDrawSignature;
+
+  /// No description provided for @workspaceTabTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get workspaceTabTeam;
+
+  /// No description provided for @staffRoleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff member'**
+  String get staffRoleLabel;
+
+  /// No description provided for @staffNavTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Company staff'**
+  String get staffNavTitle;
+
+  /// No description provided for @staffManageButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff'**
+  String get staffManageButton;
+
+  /// No description provided for @staffMyClientsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My clients'**
+  String get staffMyClientsTitle;
+
+  /// No description provided for @staffMyClientsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No clients are assigned to you yet.'**
+  String get staffMyClientsEmpty;
+
+  /// No description provided for @staffSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search clients'**
+  String get staffSearchHint;
+
+  /// No description provided for @staffEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No staff members yet.'**
+  String get staffEmpty;
+
+  /// No description provided for @staffAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add staff member'**
+  String get staffAdd;
+
+  /// No description provided for @staffEditAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get staffEditAction;
+
+  /// No description provided for @staffFieldName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get staffFieldName;
+
+  /// No description provided for @staffFieldEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get staffFieldEmail;
+
+  /// No description provided for @staffFieldPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get staffFieldPhone;
+
+  /// No description provided for @staffFieldDob.
+  ///
+  /// In en, this message translates to:
+  /// **'Date of birth'**
+  String get staffFieldDob;
+
+  /// No description provided for @staffFieldPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get staffFieldPassword;
+
+  /// No description provided for @staffSendEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email the login details'**
+  String get staffSendEmail;
+
+  /// No description provided for @staffSaveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get staffSaveAction;
+
+  /// No description provided for @staffChangePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get staffChangePassword;
+
+  /// No description provided for @staffArchiveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get staffArchiveAction;
+
+  /// No description provided for @staffUnarchiveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Unarchive'**
+  String get staffUnarchiveAction;
+
+  /// No description provided for @staffArchiveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive this staff member? They will be signed out and lose access immediately.'**
+  String get staffArchiveConfirm;
+
+  /// No description provided for @staffUnarchiveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore this staff member? They will be able to log in again.'**
+  String get staffUnarchiveConfirm;
+
+  /// No description provided for @staffShowArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Show archived'**
+  String get staffShowArchived;
+
+  /// No description provided for @staffClientsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Clients'**
+  String get staffClientsLabel;
+
+  /// No description provided for @staffNoClients.
+  ///
+  /// In en, this message translates to:
+  /// **'Not assigned to any client yet.'**
+  String get staffNoClients;
+
+  /// No description provided for @staffLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the staff list.'**
+  String get staffLoadFailed;
+
+  /// No description provided for @staffSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the changes.'**
+  String get staffSaveFailed;
+
+  /// No description provided for @staffCreatedMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff member added.'**
+  String get staffCreatedMsg;
+
+  /// No description provided for @staffUpdatedMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff member updated.'**
+  String get staffUpdatedMsg;
+
+  /// No description provided for @staffArchivedMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff member archived.'**
+  String get staffArchivedMsg;
+
+  /// No description provided for @staffUnarchivedMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff member restored.'**
+  String get staffUnarchivedMsg;
+
+  /// No description provided for @staffPasswordChangedMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Password changed. The staff member was signed out.'**
+  String get staffPasswordChangedMsg;
+
+  /// No description provided for @staffArchivedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived'**
+  String get staffArchivedBadge;
+
+  /// No description provided for @teamTabHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which company staff members work on this client. They can chat, send approval requests and join meetings for this client only.'**
+  String get teamTabHint;
+
+  /// No description provided for @teamTabEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no active staff members yet. The super admin adds them from the Staff screen.'**
+  String get teamTabEmpty;
+
+  /// No description provided for @teamTabAssign.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign'**
+  String get teamTabAssign;
+
+  /// No description provided for @teamTabUnassign.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get teamTabUnassign;
+
+  /// No description provided for @teamTabLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the team.'**
+  String get teamTabLoadFailed;
+
+  /// No description provided for @teamTabSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update the team.'**
+  String get teamTabSaveFailed;
+
+  /// No description provided for @teamTabAssignedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned'**
+  String get teamTabAssignedLabel;
+
+  /// No description provided for @staffClientsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load your clients.'**
+  String get staffClientsLoadFailed;
+
+  /// No description provided for @mtTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get mtTitle;
+
+  /// No description provided for @mtSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Company staff who work on your clients.'**
+  String get mtSubtitle;
+
+  /// No description provided for @mtAddFromCompany.
+  ///
+  /// In en, this message translates to:
+  /// **'Add from company staff'**
+  String get mtAddFromCompany;
+
+  /// No description provided for @mtHideCompany.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide company staff'**
+  String get mtHideCompany;
+
+  /// No description provided for @mtCompanyStaffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Company staff'**
+  String get mtCompanyStaffTitle;
+
+  /// No description provided for @mtNotInAnyTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Not in any team'**
+  String get mtNotInAnyTeam;
+
+  /// No description provided for @mtInTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'In team: {names}'**
+  String mtInTeams(Object names);
+
+  /// No description provided for @mtAddN.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {n} to my team'**
+  String mtAddN(int n);
+
+  /// No description provided for @mtMyTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'My team'**
+  String get mtMyTeam;
+
+  /// No description provided for @mtLinkClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Link to a client'**
+  String get mtLinkClient;
+
+  /// No description provided for @mtRemoveFromTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from team'**
+  String get mtRemoveFromTeam;
+
+  /// No description provided for @mtNoClientsLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Not linked to any of your clients yet.'**
+  String get mtNoClientsLinked;
+
+  /// No description provided for @mtEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get mtEdit;
+
+  /// No description provided for @mtUnlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink'**
+  String get mtUnlink;
+
+  /// No description provided for @mtPickClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Client'**
+  String get mtPickClient;
+
+  /// No description provided for @mtPickClientHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a client'**
+  String get mtPickClientHint;
+
+  /// No description provided for @mtPermOnClient.
+  ///
+  /// In en, this message translates to:
+  /// **'What they can do on this client'**
+  String get mtPermOnClient;
+
+  /// No description provided for @mtPermChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get mtPermChat;
+
+  /// No description provided for @mtPermApprovals.
+  ///
+  /// In en, this message translates to:
+  /// **'Approvals'**
+  String get mtPermApprovals;
+
+  /// No description provided for @mtPermMeetings.
+  ///
+  /// In en, this message translates to:
+  /// **'Meetings'**
+  String get mtPermMeetings;
+
+  /// No description provided for @mtSeeChat.
+  ///
+  /// In en, this message translates to:
+  /// **'See chat'**
+  String get mtSeeChat;
+
+  /// No description provided for @mtSendChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Send messages'**
+  String get mtSendChat;
+
+  /// No description provided for @mtSeeApprovals.
+  ///
+  /// In en, this message translates to:
+  /// **'See approvals'**
+  String get mtSeeApprovals;
+
+  /// No description provided for @mtRequestApprovals.
+  ///
+  /// In en, this message translates to:
+  /// **'Request approvals'**
+  String get mtRequestApprovals;
+
+  /// No description provided for @mtSeeMeetings.
+  ///
+  /// In en, this message translates to:
+  /// **'See meetings'**
+  String get mtSeeMeetings;
+
+  /// No description provided for @mtJoinMeetings.
+  ///
+  /// In en, this message translates to:
+  /// **'Join meetings'**
+  String get mtJoinMeetings;
+
+  /// No description provided for @mtDepNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Turning a \"see\" switch off also turns its action off.'**
+  String get mtDepNote;
+
+  /// No description provided for @mtSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get mtSave;
+
+  /// No description provided for @mtCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get mtCancel;
+
+  /// No description provided for @mtView.
+  ///
+  /// In en, this message translates to:
+  /// **'view'**
+  String get mtView;
+
+  /// No description provided for @mtSend.
+  ///
+  /// In en, this message translates to:
+  /// **'send'**
+  String get mtSend;
+
+  /// No description provided for @mtRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'request'**
+  String get mtRequest;
+
+  /// No description provided for @mtJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'join'**
+  String get mtJoin;
+
+  /// No description provided for @mtNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No access'**
+  String get mtNone;
+
+  /// No description provided for @mtRemoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from your team?'**
+  String get mtRemoveTitle;
+
+  /// No description provided for @mtRemoveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They will be unassigned from {count} of your clients: {names}. Other managers\' teams are not affected.'**
+  String mtRemoveBody(int count, Object names);
+
+  /// No description provided for @mtRemoveBodyNone.
+  ///
+  /// In en, this message translates to:
+  /// **'They are not assigned to any of your clients.'**
+  String get mtRemoveBodyNone;
+
+  /// No description provided for @mtRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get mtRemoveConfirm;
+
+  /// No description provided for @mtLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the team.'**
+  String get mtLoadFailed;
+
+  /// No description provided for @mtSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the changes.'**
+  String get mtSaveFailed;
+
+  /// No description provided for @mtNoClientsToLink.
+  ///
+  /// In en, this message translates to:
+  /// **'All your clients are already linked.'**
+  String get mtNoClientsToLink;
+
+  /// No description provided for @mtEmptyTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Your team is empty. Add people from company staff.'**
+  String get mtEmptyTeam;
+
+  /// No description provided for @mtNotMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Not in your team'**
+  String get mtNotMine;
+
+  /// No description provided for @mtNotMineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned before this client moved to you.'**
+  String get mtNotMineHint;
+
+  /// No description provided for @mtAddMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to my team'**
+  String get mtAddMine;
+
+  /// No description provided for @mtOpenTeamPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Team page'**
+  String get mtOpenTeamPage;
+
+  /// No description provided for @mtEditPerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit permissions'**
+  String get mtEditPerms;
+
+  /// No description provided for @mtNoOtherStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no other company staff to add.'**
+  String get mtNoOtherStaff;
+
+  /// No description provided for @teamTabHintManager.
+  ///
+  /// In en, this message translates to:
+  /// **'Your team members. Assign or unassign here — permissions are set from the Team page.'**
+  String get teamTabHintManager;
+
+  /// No description provided for @teamTabEmptyManager.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody in your team yet. Add people from the Team page.'**
+  String get teamTabEmptyManager;
+
+  /// No description provided for @chatStaffReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'You can read this chat but not write in it.'**
+  String get chatStaffReadOnly;
+
+  /// No description provided for @amRoleSuperAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Super admin'**
+  String get amRoleSuperAdmin;
+
+  /// No description provided for @amRoleManager.
+  ///
+  /// In en, this message translates to:
+  /// **'Account manager'**
+  String get amRoleManager;
+
+  /// No description provided for @amRoleAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Manager assistant'**
+  String get amRoleAssistant;
+
+  /// No description provided for @amGreetMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get amGreetMorning;
+
+  /// No description provided for @amGreetAfternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get amGreetAfternoon;
+
+  /// No description provided for @amGreetEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get amGreetEvening;
+
+  /// No description provided for @amHomeSubSa.
+  ///
+  /// In en, this message translates to:
+  /// **'The agency today.'**
+  String get amHomeSubSa;
+
+  /// No description provided for @amHomeSubAm.
+  ///
+  /// In en, this message translates to:
+  /// **'Here is what needs you today.'**
+  String get amHomeSubAm;
+
+  /// No description provided for @amKpiNeedAction.
+  ///
+  /// In en, this message translates to:
+  /// **'need your action'**
+  String get amKpiNeedAction;
+
+  /// No description provided for @amOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get amOpen;
+
+  /// No description provided for @amWaitingOnYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting on you'**
+  String get amWaitingOnYou;
+
+  /// No description provided for @financeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Finance'**
+  String get financeTitle;
+
+  /// No description provided for @financeApprovedTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved total'**
+  String get financeApprovedTotal;
+
+  /// No description provided for @financePendingCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get financePendingCount;
+
+  /// No description provided for @financeApprovedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get financeApprovedCount;
+
+  /// No description provided for @financeAllCount.
+  ///
+  /// In en, this message translates to:
+  /// **'All payments'**
+  String get financeAllCount;
+
+  /// No description provided for @financePaymentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} payments'**
+  String financePaymentsHint(int count);
+
+  /// No description provided for @financeSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search clients, contracts or amounts'**
+  String get financeSearchHint;
+
+  /// No description provided for @financeLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get financeLoadMore;
+
+  /// No description provided for @financeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load payments'**
+  String get financeFailed;
+
+  /// No description provided for @amRoleStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'Team member'**
+  String get amRoleStaff;
+
+  /// No description provided for @notificationsUnreadCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unread'**
+  String notificationsUnreadCount(int count);
+
+  /// No description provided for @notificationsAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'You’re all caught up'**
+  String get notificationsAllRead;
+
+  /// No description provided for @notificationsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing new.'**
+  String get notificationsEmptyTitle;
+
+  /// No description provided for @notificationsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'When something happens on one of your clients, it shows up here.'**
+  String get notificationsEmptyHint;
+
+  /// No description provided for @notificationsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load your notifications.'**
+  String get notificationsLoadFailed;
+
+  /// No description provided for @notificationsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get notificationsDelete;
+
+  /// No description provided for @notificationsGroupToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get notificationsGroupToday;
+
+  /// No description provided for @notificationsGroupYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get notificationsGroupYesterday;
+
+  /// No description provided for @notificationsGroupWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier this week'**
+  String get notificationsGroupWeek;
+
+  /// No description provided for @paymentsSummaryContracted.
+  ///
+  /// In en, this message translates to:
+  /// **'Contracted'**
+  String get paymentsSummaryContracted;
+
+  /// No description provided for @paymentsSummaryRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining'**
+  String get paymentsSummaryRemaining;
+
+  /// No description provided for @reportsEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Insight'**
+  String get reportsEyebrow;
+
+  /// No description provided for @amKpiRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Revenue'**
+  String get amKpiRevenue;
+
+  /// No description provided for @amKpiUnreadMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread messages'**
+  String get amKpiUnreadMessages;
+
+  /// No description provided for @amKpiAcrossManagers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 manager} other{across {count} managers}}'**
+  String amKpiAcrossManagers(int count);
+
+  /// No description provided for @amKpiAwaitingApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} awaiting approval'**
+  String amKpiAwaitingApproval(int count);
+
+  /// No description provided for @amRecentActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent activity'**
+  String get amRecentActivity;
+
+  /// No description provided for @amStNeedsReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs your review'**
+  String get amStNeedsReview;
+
+  /// No description provided for @amStCompanyApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'Company approval'**
+  String get amStCompanyApproval;
+
+  /// No description provided for @amStAwaitingClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting client'**
+  String get amStAwaitingClient;
+
+  /// No description provided for @amPaymentProof.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment proof'**
+  String get amPaymentProof;
+
+  /// No description provided for @amAgeMin.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min'**
+  String amAgeMin(int n);
+
+  /// No description provided for @amAgeHour.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} h'**
+  String amAgeHour(int n);
+
+  /// No description provided for @amAgeToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get amAgeToday;
+
+  /// No description provided for @amClientsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 client} other{{count} clients}}'**
+  String amClientsCount(int count);
+
+  /// No description provided for @approvalsEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get approvalsEyebrow;
+
+  /// No description provided for @amNewClient.
+  ///
+  /// In en, this message translates to:
+  /// **'New client'**
+  String get amNewClient;
+
+  /// No description provided for @clientsEyebrowSa.
+  ///
+  /// In en, this message translates to:
+  /// **'Directory'**
+  String get clientsEyebrowSa;
+
+  /// No description provided for @clientsEyebrowAm.
+  ///
+  /// In en, this message translates to:
+  /// **'Your book'**
+  String get clientsEyebrowAm;
+
+  /// No description provided for @contractStepClientApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Client approved'**
+  String get contractStepClientApproved;
+
+  /// No description provided for @contractKindMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Main'**
+  String get contractKindMain;
+
+  /// No description provided for @contractKindAdditional.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional'**
+  String get contractKindAdditional;
+
+  /// No description provided for @teamEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get teamEyebrow;
+
+  /// No description provided for @amNewManager.
+  ///
+  /// In en, this message translates to:
+  /// **'New manager'**
+  String get amNewManager;
+
+  /// No description provided for @amCanApproveContracts.
+  ///
+  /// In en, this message translates to:
+  /// **'Can approve contracts'**
+  String get amCanApproveContracts;
+
+  /// No description provided for @amDeactivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate'**
+  String get amDeactivate;
+
+  /// No description provided for @amDeactivateConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate {name}? They will be signed out everywhere.'**
+  String amDeactivateConfirm(String name);
+
+  /// No description provided for @amAssignedClients.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 assigned client} other{{count} assigned clients}}'**
+  String amAssignedClients(int count);
+
+  /// No description provided for @staffNewMember.
+  ///
+  /// In en, this message translates to:
+  /// **'New team member'**
+  String get staffNewMember;
+
+  /// No description provided for @staffPasswordShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get staffPasswordShort;
+
+  /// No description provided for @financeEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Money'**
+  String get financeEyebrow;
+
+  /// No description provided for @auditEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get auditEyebrow;
+
+  /// No description provided for @settingsEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get settingsEyebrow;
+
+  /// No description provided for @settingsLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile and language.'**
+  String get settingsLead;
+
+  /// No description provided for @settingsLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsLanguage;
+
+  /// No description provided for @settingsSigUsedFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Used when you company-approve contracts.'**
+  String get settingsSigUsedFor;
+
+  /// No description provided for @clausesShowFewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Show fewer'**
+  String get clausesShowFewer;
+
+  /// No description provided for @clausesLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed clauses go into every contract; optional ones are picked per contract.'**
+  String get clausesLead;
+
+  /// No description provided for @settingsDisplayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get settingsDisplayName;
+
+  /// No description provided for @clientsNewEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Directory'**
+  String get clientsNewEyebrow;
+
+  /// No description provided for @credsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Client created'**
+  String get credsTitle;
+
+  /// No description provided for @onboardingSentOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent {date}'**
+  String onboardingSentOn(String date);
+
+  /// No description provided for @onboardingEditLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like changed?'**
+  String get onboardingEditLabel;
+
+  /// No description provided for @onboardingEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Please split the payment into two instalments'**
+  String get onboardingEditHint;
+
+  /// No description provided for @onboardingSendRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send request'**
+  String get onboardingSendRequest;
+
+  /// No description provided for @onboardingYourRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Your request'**
+  String get onboardingYourRequest;
+
+  /// No description provided for @onboardingSendPaymentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a payment'**
+  String get onboardingSendPaymentTitle;
+
+  /// No description provided for @onboardingDropTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to add files'**
+  String get onboardingDropTitle;
+
+  /// No description provided for @onboardingDropHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Images from your gallery'**
+  String get onboardingDropHint;
+
+  /// No description provided for @signatureLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Your e-signature, used when you approve contracts and requests.'**
+  String get signatureLead;
+
+  /// No description provided for @signatureNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No signature saved yet'**
+  String get signatureNone;
+
+  /// No description provided for @teamLead.
+  ///
+  /// In en, this message translates to:
+  /// **'People who can work in this workspace — each with only the access you give them.'**
+  String get teamLead;
+
+  /// No description provided for @teamAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add teammate'**
+  String get teamAdd;
+
+  /// No description provided for @teamAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a teammate'**
+  String get teamAddTitle;
+
+  /// No description provided for @teamSendLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Email the login details'**
+  String get teamSendLogin;
+
+  /// No description provided for @settingsClientLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile and language.'**
+  String get settingsClientLead;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -10733,8 +11923,7 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['ar', 'en'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['ar', 'en'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

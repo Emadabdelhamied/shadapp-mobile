@@ -10,12 +10,16 @@
 
 import 'dart:io' show File;
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
+
 import '../../core/api_client.dart';
 import '../../core/app_log.dart';
 import '../../core/helpers/proof_image_picker.dart';
-import '../../core/theme.dart';
+import '../../core/luxe/lx_icons.dart';
+import '../../core/luxe/tokens.dart';
+import '../../core/widgets/luxe/luxe_widgets.dart';
 import '../../providers/payment_provider.dart';
 
 void showOnboardingPaymentSheet({
@@ -39,171 +43,230 @@ void showOnboardingPaymentSheet({
     'instapay': AppLocalizations.of(context)!.payments_methodInstapay,
     'vodafone_cash': AppLocalizations.of(context)!.payments_methodVodafoneCash,
     'mobile_wallet': AppLocalizations.of(context)!.payments_methodMobileWallet,
+    'cheque': AppLocalizations.of(context)!.payments_methodCheque,
   };
 
-  final amountCtrl = TextEditingController(text: suggestedAmount > 0 ? suggestedAmount.toStringAsFixed(0) : '');
+  final amountCtrl =
+      TextEditingController(text: suggestedAmount > 0 ? suggestedAmount.toStringAsFixed(0) : '');
   final selectedMethod = ValueNotifier<String>('bank_transfer');
   List<Map<String, dynamic>> proofFiles = [];
   final uploadingNotifier = ValueNotifier<bool>(false);
   final errorNotifier = ValueNotifier<String?>(null);
 
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+  // Mockup `paySheet`: grab, serif "Send a payment", amount + read-only
+  // currency (.f2), method chips (.chip2), receipt drop box + one .thumb per
+  // file, then the full-width primary button. Camera stays as an extra link.
+  showLuxeSheet<void>(
+    context,
     builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setSheetState) => Padding(
-        padding: EdgeInsetsDirectional.fromSTEB(24, 16, 24, MediaQuery.of(ctx).viewInsets.bottom + 16),
-        child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(child: Text(AppLocalizations.of(ctx)!.onboarding_requestPaymentTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay'), maxLines: 1, overflow: TextOverflow.ellipsis)),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
-            ]),
-            const SizedBox(height: 16),
-            TextField(
-              controller: amountCtrl,
-              decoration: InputDecoration(labelText: '${AppLocalizations.of(ctx)!.onboarding_amountField} *', hintText: '0.00', prefixText: '$currency '),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-            InputDecorator(
-              decoration: InputDecoration(labelText: AppLocalizations.of(ctx)!.onboarding_currencyField),
-              child: Text(currency, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.gold)),
-            ),
-            const SizedBox(height: 12),
-            ValueListenableBuilder<String>(
-              valueListenable: selectedMethod,
-              builder: (_, val, __) => DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: val,
-                decoration: InputDecoration(labelText: AppLocalizations.of(ctx)!.onboarding_paymentMethodField),
-                items: methodLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-                onChanged: (v) { if (v != null) selectedMethod.value = v; },
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Proof files section
-            Text(AppLocalizations.of(ctx)!.onboarding_proofField, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ShadColors.textSecondary)),
-            const SizedBox(height: 8),
-
-            if (proofFiles.isNotEmpty) ...[
-              SizedBox(
-                height: 90,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: proofFiles.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) {
-                    final pf = proofFiles[i];
-                    return Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 80, height: 80,
+      builder: (ctx, setSheetState) {
+        final l10n = AppLocalizations.of(ctx)!;
+        Widget label(String t) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(t, style: Lx.text(ctx, size: 11, color: Lx.muted)),
+            );
+        const underline = UnderlineInputBorder(borderSide: BorderSide(color: Lx.line2));
+        return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.onboardingSendPaymentTitle, style: Lx.display(ctx, size: 22)),
+              const SizedBox(height: 18),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    label(l10n.onboarding_amountField),
+                    TextField(
+                      key: const ValueKey('payment-amount'),
+                      controller: amountCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: Lx.display(ctx, size: 18),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        filled: false,
+                        hintText: '0',
+                        hintStyle: Lx.display(ctx, size: 18, color: Lx.faint),
+                        contentPadding: const EdgeInsets.only(bottom: 8),
+                        border: underline,
+                        enabledBorder: underline,
+                        focusedBorder:
+                            const UnderlineInputBorder(borderSide: BorderSide(color: Lx.muted)),
+                      ),
+                    ),
+                  ]),
+                ),
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: 90,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    label(l10n.onboarding_currencyField),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.only(bottom: 8),
+                      decoration:
+                          const BoxDecoration(border: Border(bottom: BorderSide(color: Lx.line2))),
+                      child: Text(currency,
+                          key: const ValueKey('payment-currency'),
+                          style: Lx.text(ctx, size: 15, color: Lx.ink2)),
+                    ),
+                  ]),
+                ),
+              ]),
+              const SizedBox(height: 20),
+              label(l10n.onboarding_paymentMethodField),
+              ValueListenableBuilder<String>(
+                valueListenable: selectedMethod,
+                builder: (_, val, __) => Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final e in methodLabels.entries)
+                      GestureDetector(
+                        key: ValueKey('pay-method-${e.key}'),
+                        onTap: () => selectedMethod.value = e.key,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
                           decoration: BoxDecoration(
-                            color: ShadColors.card,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: ShadColors.cardBorder),
+                            color: val == e.key ? const Color(0x33941414) : null,
+                            borderRadius: BorderRadius.circular(Lx.rPill),
+                            border: Border.all(
+                                color: val == e.key ? const Color(0x80941414) : Lx.line2),
                           ),
-                          child: pf['bytes'] != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.memory(pf['bytes'] as Uint8List, fit: BoxFit.cover, width: 80, height: 80),
-                                )
-                              : Center(
-                                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                    const Icon(Icons.insert_drive_file, size: 24, color: ShadColors.textSecondary),
-                                    const SizedBox(height: 4),
-                                    Text(pf['name'] ?? '', style: const TextStyle(fontSize: 9, color: ShadColors.textDisabled), overflow: TextOverflow.ellipsis, maxLines: 2, textAlign: TextAlign.center),
-                                  ]),
-                                ),
+                          child: Text(e.value,
+                              style:
+                                  Lx.text(ctx, size: 12, color: val == e.key ? Lx.ink : Lx.ink2)),
                         ),
-                        Positioned(
-                          right: -6, top: -6,
-                          child: GestureDetector(
-                            onTap: () {
-                              setSheetState(() { proofFiles.removeAt(i); });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(color: ShadColors.error, shape: BoxShape.circle),
-                              child: const Icon(Icons.close, size: 12, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              label(l10n.onboarding_proofField),
+              GestureDetector(
+                key: const ValueKey('payment-attach'),
+                onTap: () async {
+                  final picked = await pickProofFromGallery(multiple: true);
+                  if (picked.isNotEmpty) setSheetState(() => proofFiles.addAll(picked));
+                },
+                child: SizedBox(
+                  width: double.infinity,
+                  child: LuxeDashedBox(
+                    child: Column(children: [
+                      const LxIcon('up', size: 18, color: Lx.muted),
+                      const SizedBox(height: 6),
+                      Text(l10n.onboardingDropTitle,
+                          style: Lx.text(ctx, size: 12.5, color: Lx.ink2)),
+                      const SizedBox(height: 4),
+                      Text(l10n.onboardingDropHint, style: Lx.text(ctx, size: 11, color: Lx.faint)),
+                    ]),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
-            ],
-            Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final picked = await pickProofFromGallery(multiple: true);
-                    if (picked.isNotEmpty) {
-                      setSheetState(() { proofFiles.addAll(picked); });
-                    }
-                  },
-                  icon: const Icon(Icons.upload_file, size: 18),
-                  label: Text(AppLocalizations.of(ctx)!.onboarding_attachFile, maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Expanded on both halves: with only the first one flexible, the
-              // translated "take photo" label claimed its full natural width
-              // and squeezed the other button down to a few pixels.
-              Expanded(
-                child: OutlinedButton.icon(
-                onPressed: () async {
-                  final picked = await pickProofFromCamera();
-                  if (picked != null) {
-                    setSheetState(() { proofFiles.add(picked); });
-                  }
-                },
-                  icon: const Icon(Icons.camera_alt, size: 18),
-                  label: Text(AppLocalizations.of(ctx)!.onboarding_takePhoto, maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-              ),
-            ]),
-            if (proofFiles.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(AppLocalizations.of(ctx)!.onboarding_filesAttached(proofFiles.length), style: TextStyle(fontSize: 11, color: ShadColors.textDisabled)),
-              ),
-            ValueListenableBuilder<String?>(
-              valueListenable: errorNotifier,
-              builder: (_, err, __) => err == null
-                  ? const SizedBox.shrink()
-                  : Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Text(err, style: const TextStyle(color: ShadColors.error, fontSize: 13)),
+              Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    for (var i = 0; i < proofFiles.length; i++)
+                      Container(
+                        key: ValueKey('payment-proof-$i'),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Lx.line2)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const LxIcon('doc', size: 14, color: Lx.ink2),
+                          const SizedBox(width: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 170),
+                            child: Text('${proofFiles[i]['name'] ?? ''}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Lx.text(ctx, size: 12)),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            key: ValueKey('payment-proof-remove-$i'),
+                            onTap: () => setSheetState(() => proofFiles.removeAt(i)),
+                            child: Text('×', style: Lx.text(ctx, size: 14, color: Lx.muted)),
+                          ),
+                        ]),
+                      ),
+                    GestureDetector(
+                      key: const ValueKey('payment-camera'),
+                      onTap: () async {
+                        final picked = await pickProofFromCamera();
+                        if (picked != null) setSheetState(() => proofFiles.add(picked));
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const LxIcon('plus', size: 14, color: Lx.muted),
+                          const SizedBox(width: 6),
+                          Text(l10n.onboarding_takePhoto,
+                              style: Lx.text(ctx, size: 12, color: Lx.muted)),
+                        ]),
+                      ),
                     ),
-            ),
-            const SizedBox(height: 20),
-            ValueListenableBuilder<bool>(
-              valueListenable: uploadingNotifier,
-              builder: (_, uploading, __) => SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: uploading ? null : () => _submitPaymentOnboarding(
-                    ctx, setSheetState, uploadingNotifier, errorNotifier, workspaceId,
-                    amountCtrl, currency, selectedMethod.value, proofFiles,
-                    paymentProvider, loadClientData,
+                  ]),
+              ValueListenableBuilder<String?>(
+                valueListenable: errorNotifier,
+                builder: (_, err, __) => err == null
+                    ? const SizedBox.shrink()
+                    : Container(
+                        key: const ValueKey('payment-sheet-error'),
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0x1F941414),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0x33941414)),
+                        ),
+                        child: Text(err, style: Lx.text(ctx, size: 12.5, color: Lx.danger)),
+                      ),
+              ),
+              const SizedBox(height: 20),
+              ValueListenableBuilder<bool>(
+                valueListenable: uploadingNotifier,
+                builder: (_, uploading, __) => SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Lx.crimson,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFF2A2827),
+                      minimumSize: const Size.fromHeight(48),
+                      shape: const StadiumBorder(),
+                      elevation: 0,
+                    ),
+                    onPressed: uploading
+                        ? null
+                        : () => _submitPaymentOnboarding(
+                              ctx,
+                              setSheetState,
+                              uploadingNotifier,
+                              errorNotifier,
+                              workspaceId,
+                              amountCtrl,
+                              currency,
+                              selectedMethod.value,
+                              proofFiles,
+                              paymentProvider,
+                              loadClientData,
+                            ),
+                    child: uploading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Text(l10n.onboarding_sendPayment),
                   ),
-                  child: uploading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Text(AppLocalizations.of(ctx)!.onboarding_sendPayment),
                 ),
               ),
-            ),
-          ]),
-        ),
-      ),
+            ]);
+      },
     ),
   );
 }
@@ -247,9 +310,16 @@ Future<void> _submitPaymentOnboarding(
       'method_type': methodType,
     };
 
-    final nativeFiles = proofFiles.where((pf) => pf['file'] != null).map((pf) => pf['file'] as File).toList();
-    final bytesFiles = proofFiles.where((pf) => pf['bytes'] != null).map((pf) => pf['bytes'] as Uint8List).toList();
-    final bytesNames = proofFiles.where((pf) => pf['bytes'] != null).map((pf) => pf['name'] as String? ?? 'file.jpg').toList();
+    final nativeFiles =
+        proofFiles.where((pf) => pf['file'] != null).map((pf) => pf['file'] as File).toList();
+    final bytesFiles = proofFiles
+        .where((pf) => pf['bytes'] != null)
+        .map((pf) => pf['bytes'] as Uint8List)
+        .toList();
+    final bytesNames = proofFiles
+        .where((pf) => pf['bytes'] != null)
+        .map((pf) => pf['name'] as String? ?? 'file.jpg')
+        .toList();
 
     await paymentProvider.createPayment(
       workspaceId,
@@ -260,7 +330,12 @@ Future<void> _submitPaymentOnboarding(
     );
 
     if (ctx.mounted) {
-      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Text(l10n.onboarding_paymentSent)])));
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Row(children: [
+        const LxIcon('check', size: 18, color: Lx.ok),
+        const SizedBox(width: 8),
+        Flexible(child: Text(l10n.onboarding_paymentSent))
+      ])));
       Navigator.pop(ctx);
     }
     loadClientData();

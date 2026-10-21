@@ -1,21 +1,22 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/material.dart';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:shadapp_client/generated/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../../core/api_client.dart';
 import '../../../core/app_log.dart';
-import '../../../core/reverb_service.dart';
-import '../../../core/theme.dart';
-import 'package:shadapp_client/generated/app_localizations.dart';
-import '../../../core/helpers/meeting_helpers.dart';
 import '../../../core/helpers/realtime_poller.dart';
-import '../../../core/widgets/client_type_badge.dart';
-import '../../../core/widgets/payment_banner.dart';
+import '../../../core/luxe/lx_icons.dart';
+import '../../../core/luxe/tokens.dart';
+import '../../../core/reverb_service.dart';
 import '../../../core/widgets/payment_detail_sheet.dart';
 import '../../../providers/chat_provider.dart';
 import '../../../providers/contract_provider.dart';
 import '../../../providers/meeting_provider.dart';
+import '../../chat/chat_page_widgets.dart' show LxMeetingBanner, LxPaymentBanner;
 import '../../chat/chat_shared.dart';
 import 'chat_tab_widgets.dart';
 
@@ -61,7 +62,6 @@ class ChatTab extends StatefulWidget {
 class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
   late final ApiClient _api = widget.api ?? ApiClient();
   late final ChatProvider _chatProvider = widget.chatProvider ?? ChatProvider();
-  late final ContractProvider _contractProvider = widget.contractProvider ?? ContractProvider();
   late final MeetingProvider _meetingProvider = widget.meetingProvider ?? MeetingProvider();
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
@@ -80,7 +80,6 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     }
   });
   int _pollTick = 0;
-  Map<String, dynamic>? _workspaceData;
   Map<String, dynamic>? _nextMeeting;
   Map<String, dynamic>? _nextPayment;
   Map<int, int?> _hostByMeetingId = {};
@@ -161,7 +160,6 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       final np = data['nextPayment'] as Map<String, dynamic>?;
       if (mounted) {
         setState(() {
-          _workspaceData = data['workspace'] as Map<String, dynamic>?;
           _nextMeeting = nm;
           _nextPayment = np;
         });
@@ -229,38 +227,39 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    final atBottom = _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 50;
+    final atBottom =
+        _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 50;
     if (atBottom) _markRead();
   }
 
   Future<void> _send() => chatSend(
-    controller: _controller,
-    wsId: _wsId,
-    replyTo: _replyTo,
-    chatProvider: _chatProvider,
-    setState: setState,
-    clearReplyTo: () => _replyTo = null,
-    load: _load,
-    markRead: _markRead,
-    consumeRequiresAction: () {
-      final needsApproval = _requestApproval;
-      if (_requestApproval) setState(() => _requestApproval = false);
-      return needsApproval;
-    },
-    logTag: 'chat_tab',
-  );
+        controller: _controller,
+        wsId: _wsId,
+        replyTo: _replyTo,
+        chatProvider: _chatProvider,
+        setState: setState,
+        clearReplyTo: () => _replyTo = null,
+        load: _load,
+        markRead: _markRead,
+        consumeRequiresAction: () {
+          final needsApproval = _requestApproval;
+          if (_requestApproval) setState(() => _requestApproval = false);
+          return needsApproval;
+        },
+        logTag: 'chat_tab',
+      );
 
   Future<void> _saveEdit() => chatSaveEdit(
-    controller: _controller,
-    editingMessage: _editingMessage,
-    chatProvider: _chatProvider,
-    state: this,
-    setState: setState,
-    clearEditingMessage: () => _editingMessage = null,
-    load: _load,
-    editFailedMessage: (e) => '${AppLocalizations.of(context)!.chatEditFailed}: $e',
-    logTag: 'chat_tab',
-  );
+        controller: _controller,
+        editingMessage: _editingMessage,
+        chatProvider: _chatProvider,
+        state: this,
+        setState: setState,
+        clearEditingMessage: () => _editingMessage = null,
+        load: _load,
+        editFailedMessage: (e) => '${AppLocalizations.of(context)!.chatEditFailed}: $e',
+        logTag: 'chat_tab',
+      );
 
   Future<void> _requireAction(int msgId) async {
     if (_wsId == null) return;
@@ -269,69 +268,74 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       _load();
     } catch (e, s) {
       AppLog.error('chat_tab._requireAction', e, s);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.chatApprovalRequestFailed)));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.chatApprovalRequestFailed)));
     }
   }
 
   void _showMessageActions(dynamic m) {
     final isSA = _api.role == 'super_admin';
-    final isOwnMessage = m['sender_type'] == 'App\\Models\\User'
-        && m['sender_id'].toString() == _api.userId.toString();
+    final isOwnMessage = m['sender_type'] == 'App\\Models\\User' &&
+        m['sender_id'].toString() == _api.userId.toString();
     final canEdit = isOwnMessage && m['type'] == 'text' && m['approval_id'] == null;
     final alreadyRequested = m['requires_action'] == true;
     showModalBottomSheet(
       context: context,
+      backgroundColor: Lx.sheet,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(Lx.rSheet))),
       builder: (ctx) {
         final l10n = AppLocalizations.of(ctx)!;
         return SafeArea(
           // Five ListTiles (two of them with subtitles) are taller than a
           // short screen once the text scale is bumped, so the sheet scrolls.
           child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            ListTile(
-              leading: const Icon(Icons.reply, size: 18),
-              title: Text(l10n.chatReplyAction, style: const TextStyle(fontSize: 14)),
-              dense: true,
-              onTap: () {
-                Navigator.pop(ctx);
-                setState(() => _replyTo = m);
-              },
-            ),
-            if (canEdit)
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
               ListTile(
-                leading: const Icon(Icons.edit, size: 18),
-                title: Text(l10n.chatEditAction),
+                leading: const Icon(Icons.reply, size: 18),
+                title: Text(l10n.chatReplyAction, style: const TextStyle(fontSize: 14)),
                 dense: true,
                 onTap: () {
                   Navigator.pop(ctx);
-                  setState(() {
-                    _editingMessage = m;
-                    _controller.text = m['message'] ?? '';
-                  });
+                  setState(() => _replyTo = m);
                 },
               ),
-            if (!alreadyRequested && !isSA && _api.canDo('can_manage_approvals'))
+              if (canEdit)
+                ListTile(
+                  leading: const Icon(Icons.edit, size: 18),
+                  title: Text(l10n.chatEditAction),
+                  dense: true,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() {
+                      _editingMessage = m;
+                      _controller.text = m['message'] ?? '';
+                    });
+                  },
+                ),
+              if (!alreadyRequested && !isSA && _api.canDo('can_manage_approvals'))
+                ListTile(
+                  leading: const Icon(Icons.how_to_reg, color: Lx.crimsonInk),
+                  title: Text(l10n.chatRequestClientApproval),
+                  subtitle: Text(l10n.chatApprovalRequestedHint),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _requireAction(m['id']);
+                  },
+                )
+              else if (alreadyRequested)
+                ListTile(
+                  leading: const Icon(Icons.check_circle, color: Lx.ok),
+                  title: Text(l10n.chatApprovalAlreadyRequested),
+                ),
               ListTile(
-                leading: const Icon(Icons.how_to_reg, color: ShadColors.primary),
-                title: Text(l10n.chatRequestClientApproval),
-                subtitle: Text(l10n.chatApprovalRequestedHint),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _requireAction(m['id']);
-                },
-              )
-            else if (alreadyRequested)
-              ListTile(
-                leading: const Icon(Icons.check_circle, color: ShadColors.success),
-                title: Text(l10n.chatApprovalAlreadyRequested),
+                leading: const Icon(Icons.info_outline, color: Lx.muted),
+                title: Text(l10n.chatMessageDetails),
+                subtitle: Text('${m['message'] ?? l10n.chatNoText}'),
+                onTap: () => Navigator.pop(ctx),
               ),
-            ListTile(
-              leading: const Icon(Icons.info_outline, color: ShadColors.textSecondary),
-              title: Text(l10n.chatMessageDetails),
-              subtitle: Text('${m['message'] ?? l10n.chatNoText}'),
-              onTap: () => Navigator.pop(ctx),
-            ),
-          ]),
+            ]),
           ),
         );
       },
@@ -350,24 +354,9 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       _load();
     } catch (e, s) {
       AppLog.error('chat_tab._sendWithAttachment', e, s);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.chatAttachFailed)));
-    }
-  }
-
-  Future<void> _openContracts() async {
-    final wsId = _wsId;
-    if (wsId == null) return;
-    try {
-      final contracts = await _contractProvider.fetchWorkspaceContractsRaw(wsId);
-      if (!mounted) return;
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        builder: (_) => ContractsSheet(contracts: contracts),
-      );
-    } catch (e, s) {
-      AppLog.error('chat_tab._openContracts', e, s);
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.chatAttachFailed)));
     }
   }
 
@@ -400,39 +389,6 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       if (uri != null && await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
-    }
-  }
-
-  Future<void> _openLatestZoomLink() async {
-    final wsId = _wsId;
-    if (wsId == null) return;
-    try {
-      final meetings = await _meetingProvider.fetchForWorkspaceRaw(wsId);
-      if (!mounted) return;
-      Map<String, dynamic>? targetMeeting;
-      for (final m in meetings.reversed) {
-        final link = m['link'] as String?;
-        final status = m['status'] as String?;
-        if (link != null && status == 'scheduled') {
-          targetMeeting = m is Map<String, dynamic> ? m : Map<String, dynamic>.from(m);
-          break;
-        }
-      }
-      if (targetMeeting == null) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.chatNoActiveMeeting)));
-        return;
-      }
-      final scheduledAt = targetMeeting['scheduled_at'] as String?;
-      if (scheduledAt != null) {
-        final joinStatus = getMeetingJoinStatus(scheduledAt, AppLocalizations.of(context)!);
-        if (!joinStatus.canJoin) {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(joinStatus.label)));
-          return;
-        }
-      }
-      await _enterMeeting(targetMeeting);
-    } catch (e, s) {
-      AppLog.error('chat_tab._openLatestZoomLink', e, s);
     }
   }
 
@@ -474,9 +430,6 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isSA = _api.role == 'super_admin';
-    final clientName = _workspaceData?['client']?['contact_person'] as String? ?? l10n.chatClient;
-    final clientAvatarUrl = _workspaceData?['client']?['avatar_url'] as String?;
-    final clientOnline = chatIsOnline(_workspaceData?['client']);
     final wsActive = widget.wsStatus == 'active';
 
     if (!wsActive) {
@@ -486,11 +439,10 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.lock, size: 48, color: ShadColors.textDisabled),
+              const LxIcon('lock', size: 44, color: Lx.faint),
               const SizedBox(height: 16),
               Text(l10n.chatWorkspaceLocked,
-                style: const TextStyle(fontSize: 14, color: ShadColors.textSecondary),
-                textAlign: TextAlign.center),
+                  style: Lx.text(context, size: 14, color: Lx.muted), textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -498,244 +450,197 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     }
 
     return Column(children: [
-      // Chat Header
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: const BoxDecoration(
-          color: ShadColors.chatHeaderBg,
-          border: Border(bottom: BorderSide(color: ShadColors.cardBorder)),
-        ),
-        child: Row(children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: ShadColors.goldSoft,
-                backgroundImage: clientAvatarUrl != null ? NetworkImage(_api.resolveFileUrl(clientAvatarUrl)) : null,
-                child: clientAvatarUrl == null ? Text(chatInitials(clientName),
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.gold)) : null,
-              ),
-              Positioned(
-                bottom: 0, right: 0,
-                  child: Container(
-                    width: 9, height: 9,
-                    decoration: BoxDecoration(
-                      color: clientOnline ? ShadColors.online : ShadColors.textDisabled,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: ShadColors.chatHeaderBg, width: 1.5),
-                    ),
-                  ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 10),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Flexible(child: Text(clientName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.textPrimary))),
-              const SizedBox(width: 6),
-              ClientTypeBadge(clientType: _workspaceData?['client']?['client_type'] as String?, compact: true),
-            ]),
-            const SizedBox(height: 1),
-            Text(clientOnline ? l10n.chatOnline : l10n.chatOffline,
-              style: TextStyle(fontSize: 10, color: clientOnline ? ShadColors.online : ShadColors.textDisabled)),
-          ])),
-          chatHeaderIconBtn(Icons.copy_outlined, _openContracts),
-          const SizedBox(width: 6),
-          chatHeaderIconBtn(Icons.videocam_outlined, _openLatestZoomLink),
-        ]),
-      ),
-      // Upcoming Meeting Banner
-      if (_nextMeeting != null) chatUpcomingMeetingBanner(
-        meeting: _nextMeeting!,
-        fallbackTitle: l10n.chatUpcomingMeeting,
-        inMinutesLabel: l10n.chatInMinutes,
-        inHoursLabel: l10n.chatInHours,
-        inDaysLabel: l10n.chatInDays,
-        joinLabel: l10n.chatJoin,
-        onTap: () => _enterMeeting(_nextMeeting!),
-      ),
-      // Upcoming Payment Banner
-      if (_nextPayment != null)
-        PaymentBanner(
-          payment: _nextPayment!,
-          onTap: () => _onPaymentBannerTap(_nextPayment!),
+      // Mockup wsChat: banners first, then the stream (no header row — the
+      // contracts live in their own tab and the meeting banner has "Join").
+      if (_nextMeeting != null || _nextPayment != null)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Column(children: [
+            if (_nextMeeting != null)
+              LxMeetingBanner(
+                  meeting: _nextMeeting!,
+                  canJoin: !isSA,
+                  onTap: () => _enterMeeting(_nextMeeting!)),
+            if (_nextPayment != null)
+              LxPaymentBanner(
+                  payment: _nextPayment!, onTap: () => _onPaymentBannerTap(_nextPayment!)),
+          ]),
         ),
       // Messages
       Expanded(
         child: _loading
-          ? ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: 4,
-              itemBuilder: (_, __) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    width: 200,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: ShadColors.chatBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: ShadColors.cardBorder, width: 0.5)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Container(height: 14, width: 140, decoration: BoxDecoration(color: ShadColors.cardBorder, borderRadius: BorderRadius.circular(6))),
-                      const SizedBox(height: 8),
-                      Container(height: 12, width: 100, decoration: BoxDecoration(color: ShadColors.cardBorder, borderRadius: BorderRadius.circular(6))),
-                    ]),
-                  ),
-                ),
+            ? const Center(child: CircularProgressIndicator(color: Lx.crimsonInk))
+            : ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+                itemCount: _messages.isEmpty ? 1 : _buildMessageList().length,
+                itemBuilder: (_, i) {
+                  if (_messages.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 60),
+                      child: Center(
+                          child: Text(AppLocalizations.of(context)!.noMessagesYet,
+                              style: Lx.text(context, size: 14, color: Lx.muted))),
+                    );
+                  }
+                  return _buildMessageList()[i];
+                },
               ),
-            )
-          : _messages.isEmpty
-              ? Center(child: Text(AppLocalizations.of(context)!.noMessagesYet, style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)))
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(14),
-                  itemCount: _buildMessageList().length,
-                  itemBuilder: (_, i) => _buildMessageList()[i],
-                ),
       ),
-      // SA Read-Only Indicator
+      // SA Read-Only Indicator (mockup `.viewonly`)
       if (isSA)
         Container(
-          padding: const EdgeInsets.all(12),
-          decoration: const BoxDecoration(
-            color: ShadColors.chatHeaderBg,
-            border: Border(top: BorderSide(color: ShadColors.cardBorder, width: 0.5)),
-          ),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 26),
+          decoration: const BoxDecoration(border: Border(top: BorderSide(color: Lx.line))),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            const Icon(Icons.visibility, size: 14, color: ShadColors.textSecondary),
+            const LxIcon('lock', size: 18, color: Lx.faint),
             const SizedBox(width: 8),
-            Text(l10n.chatReadOnly, style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+            Text(l10n.chatReadOnly, style: Lx.text(context, size: 12.5, color: Lx.faint)),
           ]),
         ),
       // Input Bar (AM, or an assistant with can_chat)
       if (!isSA && _api.canDo('can_chat'))
-        Container(
-          decoration: const BoxDecoration(
-            color: ShadColors.chatHeaderBg,
-            border: Border(top: BorderSide(color: ShadColors.cardBorder, width: 0.5)),
-          ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            GestureDetector(
-              onTap: () => setState(() => _requestApproval = !_requestApproval),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                child: Row(children: [
-                  Icon(
-                    _requestApproval ? Icons.check_circle : Icons.circle_outlined,
-                    size: 16,
-                    color: _requestApproval ? ShadColors.gold : ShadColors.textSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    l10n.chatRequestClientApproval,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: _requestApproval ? FontWeight.w700 : FontWeight.w400,
-                      color: _requestApproval ? ShadColors.gold : ShadColors.textSecondary,
-                    ),
-                  ),
-                ]),
-              ),
-            ),
-            if (_replyTo != null)
-              Container(
-                padding: const EdgeInsetsDirectional.fromSTEB(14, 7, 14, 7),
-                decoration: const BoxDecoration(
-                  color: ShadColors.chatHeaderBg,
-                  border: Border(top: BorderSide(color: ShadColors.cardBorder, width: 0.5)),
-                ),
-                child: Row(children: [
-                  Container(width: 2.5, height: 26, decoration: BoxDecoration(
-                    color: ShadColors.crimson, borderRadius: BorderRadius.circular(2),
-                  )),
-                  const SizedBox(width: 8),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(_replyTo!['sender']?['name'] ?? l10n.chatMessage, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: ShadColors.crimson)),
-                    Text(_replyTo!['message'] ?? '', style: const TextStyle(fontSize: 9.5, color: ShadColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ])),
-                  GestureDetector(
-                    onTap: () => setState(() => _replyTo = null),
-                    child: const Text('✕', style: TextStyle(fontSize: 12, color: ShadColors.textDisabled)),
-                  ),
-                ]),
-              ),
-            if (_editingMessage != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                child: Row(children: [
-                  const Icon(Icons.edit, size: 14, color: ShadColors.gold),
-                  const SizedBox(width: 6),
-                  Expanded(child: Text(l10n.chatEditMessage, style: const TextStyle(fontSize: 12, color: ShadColors.gold), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  GestureDetector(
-                    onTap: () => setState(() { _editingMessage = null; _controller.clear(); }),
-                    child: const Icon(Icons.close, size: 16, color: ShadColors.textSecondary),
-                  ),
-                ]),
-              ),
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(13, 0, 13, 9),
+        Column(mainAxisSize: MainAxisSize.min, children: [
+          // Mockup `.rq`: ring + "request client approval".
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _requestApproval = !_requestApproval),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 2),
               child: Row(children: [
                 Container(
-                  width: 32, height: 32,
+                  width: 16,
+                  height: 16,
                   decoration: BoxDecoration(
-                    color: ShadColors.overlayFaint,
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(color: ShadColors.cardBorder, width: 0.5),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.attach_file, size: 14),
-                    onPressed: _editingMessage != null ? null : _sendWithAttachment,
-                    color: ShadColors.textSecondary,
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    style: const TextStyle(fontSize: 12, color: ShadColors.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: _editingMessage != null ? l10n.chatEditYourMessage : l10n.typeMessage,
-                      hintStyle: const TextStyle(fontSize: 12, color: ShadColors.textDim),
-                      filled: true,
-                      fillColor: ShadColors.chatInputFill,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: const BorderSide(color: ShadColors.overlaySoft, width: 1),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: const BorderSide(color: ShadColors.overlaySoft, width: 1),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: const BorderSide(color: ShadColors.gold, width: 1),
-                      ),
-                    ),
-                    onSubmitted: (_) => _editingMessage != null ? _saveEdit() : _send(),
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Container(
-                  width: 32, height: 32,
-                  decoration: BoxDecoration(
-                    color: _editingMessage != null ? ShadColors.gold : ShadColors.crimson,
                     shape: BoxShape.circle,
+                    color: _requestApproval ? Lx.crimson : null,
+                    border: Border.all(color: _requestApproval ? Lx.crimson : Lx.faint, width: 1.5),
                   ),
-                  child: IconButton(
-                    icon: Icon(
-                      _editingMessage != null ? Icons.check : Icons.send_rounded,
-                      color: Colors.white, size: 14,
+                  child: _requestApproval
+                      ? const Icon(Icons.check, size: 11, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Text(l10n.chatRequestClientApproval,
+                    style: Lx.text(context, size: 12, color: _requestApproval ? Lx.ink : Lx.muted)),
+              ]),
+            ),
+          ),
+          if (_replyTo != null)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 7, 16, 7),
+              child: Row(children: [
+                Container(
+                    width: 2.5,
+                    height: 28,
+                    decoration: BoxDecoration(
+                        color: Lx.crimsonInk, borderRadius: BorderRadius.circular(2))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(_replyTo!['sender']?['name'] ?? l10n.chatMessage,
+                      style: Lx.text(context,
+                          size: 10.5, color: Lx.crimsonInk, weight: FontWeight.w500)),
+                  Text(_replyTo!['message'] ?? '',
+                      style: Lx.text(context, size: 11, color: Lx.muted),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ])),
+                GestureDetector(
+                  onTap: () => setState(() => _replyTo = null),
+                  child: const Icon(Icons.close, size: 16, color: Lx.faint),
+                ),
+              ]),
+            ),
+          if (_editingMessage != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(children: [
+                const Icon(Icons.edit, size: 14, color: Lx.crimsonInk),
+                const SizedBox(width: 6),
+                Text(l10n.chatEditMessage, style: Lx.text(context, size: 12, color: Lx.crimsonInk)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _editingMessage = null;
+                    _controller.clear();
+                  }),
+                  child: const Icon(Icons.close, size: 16, color: Lx.faint),
+                ),
+              ]),
+            ),
+          // Staff without "send" on this client can read but not write (PLAN_2 ق٣).
+          if (!_api.staffCan('can_send_chat'))
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 6, 16, 14),
+              child: Text(
+                l10n.chatStaffReadOnly,
+                key: const ValueKey('chat-read-only'),
+                textAlign: TextAlign.center,
+                style: Lx.text(context, size: 12.5, color: Lx.faint),
+              ),
+            )
+          else
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.fromLTRB(0, 10, 0, 26),
+              decoration: const BoxDecoration(border: Border(top: BorderSide(color: Lx.line))),
+              child: Row(children: [
+                Expanded(
+                  child: Container(
+                    decoration:
+                        const BoxDecoration(border: Border(bottom: BorderSide(color: Lx.line2))),
+                    child: Row(children: [
+                      InkResponse(
+                        key: const ValueKey('chat-attach'),
+                        radius: 18,
+                        onTap: _editingMessage != null ? null : _sendWithAttachment,
+                        child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 6),
+                            child: LxIcon('clip', size: 18, color: Lx.faint)),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          style: Lx.text(context, size: 14),
+                          cursorColor: Lx.crimsonInk,
+                          decoration: InputDecoration(
+                            isDense: true,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                            hintText: _editingMessage != null
+                                ? l10n.chatEditYourMessage
+                                : l10n.typeMessage,
+                            hintStyle: Lx.text(context, size: 14, color: Lx.faint),
+                          ),
+                          onSubmitted: (_) => _editingMessage != null ? _saveEdit() : _send(),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  key: const ValueKey('chat-send'),
+                  onTap: _editingMessage != null ? _saveEdit : _send,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(color: Lx.crimson, shape: BoxShape.circle),
+                    child: Center(
+                      child: _editingMessage != null
+                          ? const Icon(Icons.check, size: 18, color: Colors.white)
+                          : const LxIcon('send', size: 18, color: Colors.white),
                     ),
-                    onPressed: _editingMessage != null ? _saveEdit : _send,
-                    padding: EdgeInsets.zero,
                   ),
                 ),
               ]),
             ),
-          ]),
-        ),
+        ]),
     ]);
   }
 
@@ -751,15 +656,15 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
   }
 
   List<Widget> _buildMessageList() => buildChatTabMessageList(
-    context: context,
-    state: this,
-    messages: _messages,
-    api: _api,
-    onLongPressMessage: _showMessageActions,
-    onEnterMeeting: _enterMeetingById,
-    isHostFor: (meetingId) {
-      final hostId = _hostByMeetingId[meetingId];
-      return hostId == null || hostId == _api.userId;
-    },
-  );
+        context: context,
+        state: this,
+        messages: _messages,
+        api: _api,
+        onLongPressMessage: _showMessageActions,
+        onEnterMeeting: _enterMeetingById,
+        isHostFor: (meetingId) {
+          final hostId = _hostByMeetingId[meetingId];
+          return hostId == null || hostId == _api.userId;
+        },
+      );
 }

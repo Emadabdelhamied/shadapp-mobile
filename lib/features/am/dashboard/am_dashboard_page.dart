@@ -8,9 +8,9 @@ import 'package:shadapp_client/generated/app_localizations.dart';
 import '../../../core/api_client.dart';
 import '../../../core/app_log.dart';
 import '../../../core/locale_provider.dart';
+import '../../../core/luxe/tokens.dart';
 import '../../../core/reverb_service.dart';
-import '../../../core/theme.dart';
-import '../../../core/widgets/shad_logo.dart';
+import '../../../core/widgets/luxe/luxe_widgets.dart';
 import '../../../data/client_repository.dart';
 import '../../../data/dashboard_repository.dart';
 import '../../../data/dashboard_stats_repository.dart';
@@ -18,6 +18,7 @@ import '../../../data/manager_repository.dart';
 import '../../../data/meeting_repository.dart';
 import '../../../data/notification_repository.dart';
 import '../../../data/payment_repository.dart';
+import '../../../models/app_notification.dart';
 import '../../../providers/client_provider.dart';
 import '../../../providers/contract_provider.dart';
 import '../../../providers/dashboard_provider.dart';
@@ -26,12 +27,12 @@ import '../../../providers/manager_provider.dart';
 import '../../../providers/meeting_provider.dart';
 import '../../../providers/notification_provider.dart';
 import '../../../providers/payment_provider.dart';
+import '../managers/account_managers_page.dart';
 import '../settings/admin_settings_page.dart';
 import 'am_dashboard_home_tabs.dart';
 import 'am_dashboard_sheets.dart';
 import 'sa_approvals_page.dart';
 import 'sa_clients_page.dart';
-import 'sa_team_page.dart';
 
 class AmDashboardPage extends StatefulWidget {
   // Step 0 of the state-layer migration plan: lets widget tests suppress the
@@ -116,6 +117,9 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   int _selectedIndex = 0;
   int _badgeApprovals = 0;
   int _badgeChat = 0;
+  // Latest notifications, shown as the home tab's "Recent activity" card
+  // (staff mockup pHome). Comes from the same /notifications call as the bell.
+  List<AppNotification> _recentActivity = [];
   Timer? _pollTimer;
   int _pollTick = 0;
 
@@ -163,6 +167,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     await _api.refreshAssistantPermissions();
+    await _api.refreshContractApproval();
     try {
       if (_isSA) {
         _allManagers = await _childManagerProvider.fetchAllManagersRaw();
@@ -237,6 +242,9 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     try {
       final data = await _notificationProvider.fetchRaw();
       _unreadNotifs = int.tryParse(data['unread_count']?.toString() ?? '') ?? 0;
+      final raw = (data['notifications'] ?? data['data']) as List<dynamic>? ?? const [];
+      _recentActivity =
+          raw.whereType<Map<String, dynamic>>().take(4).map(AppNotification.fromJson).toList();
     } catch (e, s) {
       AppLog.error('am_dashboard._loadNotifs(unread)', e, s);
     }
@@ -319,6 +327,9 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
         'company': client?['company_name'] ?? '',
         'client': client,
         'workspace_id': ws?['id'],
+        'status': c['status'],
+        'created_at': c['created_at'],
+        'manager': ((ws?['account_manager'] ?? client?['account_manager']) as Map?)?['name'],
       };
     }).toList();
   }
@@ -335,8 +346,13 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     }
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Lx.sheet,
+      barrierColor: const Color(0x8C000000),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Lx.rSheet)),
+        side: BorderSide(color: Lx.line2),
+      ),
       builder: (ctx) => CreateMeetingSheet(
           clients: clients,
           meetingProvider: _meetingProvider,
@@ -362,277 +378,261 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     super.dispose();
   }
 
+  String _avatarInitial() {
+    final n = (_isSA ? 'Admin' : (_api.userName ?? '')).trim();
+    return n.isEmpty ? '·' : n.substring(0, 1).toUpperCase();
+  }
+
+  String _roleLabel(AppLocalizations loc) =>
+      _isSA ? loc.amRoleSuperAdmin : (_isAssistant ? loc.amRoleAssistant : loc.amRoleManager);
+
+  /// The staff mockup's "More" sheet: who you are, the extra pages, language, logout.
+  void _showMoreSheet() {
+    final loc = AppLocalizations.of(context)!;
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final name = _isSA ? 'Admin' : (_api.userName ?? '');
+    showLuxeSheet<void>(context, builder: (ctx) {
+      void go(int index) {
+        Navigator.pop(ctx);
+        setState(() => _selectedIndex = index);
+      }
+
+      void open(String route) {
+        Navigator.pop(ctx);
+        context.push(route);
+      }
+
+      final rows = <Widget>[
+        if (_isSA) ...[
+          LuxeMoreRow(
+              key: const ValueKey('more-finance'),
+              lxIcon: 'wallet',
+              label: loc.financeTitle,
+              onTap: () => open('/am/finance')),
+          LuxeMoreRow(
+              key: const ValueKey('more-reports'),
+              lxIcon: 'chart',
+              label: loc.amStatReports,
+              onTap: () => open('/am/reports')),
+          LuxeMoreRow(
+              key: const ValueKey('more-audit'),
+              lxIcon: 'list',
+              label: loc.auditLogs,
+              onTap: () => open('/am/audit-logs')),
+          LuxeMoreRow(
+              key: const ValueKey('more-managers'),
+              lxIcon: 'key',
+              label: loc.accountManagers_title,
+              onTap: () => go(3)),
+          LuxeMoreRow(
+              key: const ValueKey('more-teams'),
+              lxIcon: 'layers',
+              label: loc.staffNavTitle,
+              onTap: () => open('/am/staff')),
+          LuxeMoreRow(
+              key: const ValueKey('more-settings'),
+              lxIcon: 'gear',
+              label: loc.amNavSettings,
+              onTap: () => go(4)),
+        ] else ...[
+          if (_api.role == 'account_manager')
+            LuxeMoreRow(
+                key: const ValueKey('more-myteam'),
+                lxIcon: 'users',
+                label: loc.mtTitle,
+                onTap: () => open('/am/my-team')),
+          if (!_isAssistant)
+            LuxeMoreRow(
+                key: const ValueKey('more-audit'),
+                lxIcon: 'list',
+                label: loc.auditLogs,
+                onTap: () => open('/am/audit-logs')),
+          LuxeMoreRow(
+              key: const ValueKey('more-settings'),
+              lxIcon: 'gear',
+              label: loc.amNavSettings,
+              onTap: () => go(3)),
+        ],
+        // Not in the mockup's home; kept here so the all-meetings sheet
+        // (and creating a meeting) stays reachable.
+        LuxeMoreRow(
+          key: const ValueKey('home-meetings'),
+          lxIcon: 'video',
+          label: loc.amStatMeetings,
+          onTap: () {
+            Navigator.pop(ctx);
+            _showAllMeetings();
+          },
+        ),
+        LuxeMoreRow(
+          key: const ValueKey('more-language'),
+          lxIcon: 'lang',
+          label: isAr ? 'English' : 'العربية',
+          onTap: () {
+            Navigator.pop(ctx);
+            context.read<LocaleProvider>().toggle();
+          },
+        ),
+        LuxeMoreRow(
+          key: const ValueKey('more-logout'),
+          lxIcon: 'out',
+          label: loc.logout,
+          danger: true,
+          last: true,
+          onTap: () {
+            Navigator.pop(ctx);
+            _logout();
+          },
+        ),
+      ];
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(children: [
+            LuxeAvatar(initial: _avatarInitial()),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name, key: const ValueKey('more-name'), style: Lx.display(ctx, size: 16)),
+                Text(_roleLabel(loc).toUpperCase(),
+                    style: Lx.text(ctx, size: 11, color: Lx.faint).copyWith(letterSpacing: 1.1)),
+              ]),
+            ),
+          ]),
+        ),
+        ...rows,
+      ]);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
+    final moreIndex = 3;
+    final navItems = <LuxeNavItem>[
+      LuxeNavItem(id: 'home', lxIcon: 'home', label: loc.amNavHome),
+      LuxeNavItem(
+          id: 'approvals', lxIcon: 'check', label: loc.amNavApprovals, badge: _badgeApprovals),
+      LuxeNavItem(
+          id: 'clients',
+          lxIcon: 'users',
+          label: _isSA ? loc.amNavClients : loc.staffMyClientsTitle),
+      LuxeNavItem(id: 'more', lxIcon: 'more', label: loc.dashboard_more),
+    ];
+
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!_isSA && _api.avatarUrl != null && _api.avatarUrl!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsetsDirectional.only(start: 8),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: ShadColors.crimson,
-                  backgroundImage: NetworkImage(_api.resolveFileUrl(_api.avatarUrl!)),
-                ),
-              ),
-            // The user's name is arbitrary length and the AppBar already
-            // carries a logo plus three actions — let the greeting ellipsize
-            // rather than push them off the bar.
-            Flexible(
-              child: Text.rich(
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  TextSpan(children: [
-                    TextSpan(
-                      text: _isSA ? '' : 'Welcome, ',
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          fontFamily: 'Tajawal',
-                          color: Colors.white70),
-                    ),
-                    TextSpan(
-                      text: _isSA ? 'Admin' : _api.userName ?? '',
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Tajawal',
-                          color: ShadColors.gold),
-                    ),
-                  ])),
-            ),
-          ],
-        ),
-        leading: const Padding(
-          padding: EdgeInsetsDirectional.only(start: 8),
-          child: ShadLogo(size: 28, showText: false),
-        ),
-        actions: [
-          Stack(children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
+      backgroundColor: Lx.page,
+      body: SafeArea(
+        bottom: false,
+        child: LuxeGlow(
+          child: Column(children: [
+            LuxeTopBar(
+              company: _roleLabel(loc),
+              avatarInitial: _avatarInitial(),
+              unread: _unreadNotifs > 0,
               // plans/notifications-badges-toasts-plan.md ن12 — this used to
               // leave the badge showing its stale pre-visit count until the
               // next 60s poll tick, even though the notifications page
               // itself just marked things read/deleted.
-              onPressed: () => context.push('/notifications').then((_) => _loadNotifs()),
+              onBell: () => context.push('/notifications').then((_) => _loadNotifs()),
+              onAvatar: _showMoreSheet,
             ),
-            if (_unreadNotifs > 0)
-              Positioned(
-                right: 6,
-                top: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration:
-                      const BoxDecoration(color: ShadColors.crimson, shape: BoxShape.circle),
-                  // ن12 — capped at 99+ like every other tab badge in this
-                  // app; this one was left uncapped.
-                  child: Text(_unreadNotifs > 99 ? '99+' : '$_unreadNotifs',
-                      style: const TextStyle(
-                          fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _load,
+                color: Lx.crimsonInk,
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator(color: Lx.crimsonInk))
+                    : IndexedStack(
+                        index: _selectedIndex,
+                        children: _isSA
+                            ? [
+                                buildHomeTab(
+                                  context: context,
+                                  allManagers: _allManagers,
+                                  pendingContracts: _pendingContracts,
+                                  pendingPayments: _pendingPayments,
+                                  api: _api,
+                                  onSelectTab: (i) => setState(() => _selectedIndex = i),
+                                  onShowAllMeetings: _showAllMeetings,
+                                  onManagerTap: _showManagerClients,
+                                  load: _load,
+                                  clientsTotal: _statInt('clients', 'total'),
+                                  contractsActive: _statInt('contracts', 'active'),
+                                  paymentsPending: _statInt('payments', 'pending'),
+                                  approvalsTotal: _statInt('approvals', 'total'),
+                                  revenueThisMonth: _stats?['revenue_this_month'] is Map
+                                      ? Map<String, dynamic>.from(
+                                          _stats!['revenue_this_month'] as Map)
+                                      : null,
+                                  recentActivity: _recentActivity,
+                                ),
+                                SaApprovalsPage(dashboardStatsProvider: _dashboardStatsProvider),
+                                SaClientsPage(
+                                    clientProvider: _childClientProvider,
+                                    managerProvider: _childManagerProvider,
+                                    api: _api),
+                                // Mockup pManagers (the old SaTeamPage was the pre-redesign screen).
+                                AccountManagersPage(
+                                    managerProvider: _childManagerProvider, embedded: true),
+                                AdminSettingsPage(api: _api),
+                              ]
+                            : [
+                                buildAmHomeTab(
+                                  context: context,
+                                  allClients: _allClients,
+                                  pendingContracts: _pendingContracts,
+                                  pendingPayments: _pendingPayments,
+                                  isSA: _isSA,
+                                  api: _api,
+                                  onSelectTab: (i) => setState(() => _selectedIndex = i),
+                                  onShowAllMeetings: _showAllMeetings,
+                                  onOpenClient: _openClient,
+                                  load: _load,
+                                  clientsTotal: _statInt('clients', 'total'),
+                                  contractsActive: _statInt('contracts', 'active'),
+                                  paymentsPending: _statInt('payments', 'pending'),
+                                  approvalsTotal: _statInt('approvals', 'total'),
+                                  contractsAwaiting: _statInt('contracts', 'awaiting_client'),
+                                  unreadMessages: _badgeChat,
+                                  recentActivity: _recentActivity,
+                                ),
+                                SaApprovalsPage(dashboardStatsProvider: _dashboardStatsProvider),
+                                _buildAmClientsTab(),
+                                AdminSettingsPage(api: _api),
+                              ],
+                      ),
               ),
+            ),
           ]),
-          IconButton(
-              icon: const Icon(Icons.language, size: 20),
-              onPressed: () => context.read<LocaleProvider>().toggle(),
-              tooltip: loc.amChangeLanguage),
-          IconButton(
-              icon: const Icon(Icons.logout_rounded), onPressed: _logout, tooltip: loc.logout),
-        ],
+        ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : IndexedStack(
-                index: _selectedIndex,
-                children: _isSA
-                    ? [
-                        buildHomeTab(
-                          context: context,
-                          allManagers: _allManagers,
-                          pendingContracts: _pendingContracts,
-                          pendingPayments: _pendingPayments,
-                          api: _api,
-                          onSelectTab: (i) => setState(() => _selectedIndex = i),
-                          onShowAllMeetings: _showAllMeetings,
-                          onManagerTap: _showManagerClients,
-                          load: _load,
-                          clientsTotal: _statInt('clients', 'total'),
-                          contractsActive: _statInt('contracts', 'active'),
-                          paymentsPending: _statInt('payments', 'pending'),
-                          approvalsTotal: _statInt('approvals', 'total'),
-                        ),
-                        SaApprovalsPage(dashboardStatsProvider: _dashboardStatsProvider),
-                        SaClientsPage(
-                            clientProvider: _childClientProvider,
-                            managerProvider: _childManagerProvider,
-                            api: _api),
-                        SaTeamPage(managerProvider: _childManagerProvider, api: _api),
-                        AdminSettingsPage(api: _api),
-                      ]
-                    : [
-                        buildAmHomeTab(
-                          context: context,
-                          allClients: _allClients,
-                          pendingContracts: _pendingContracts,
-                          pendingPayments: _pendingPayments,
-                          isSA: _isSA,
-                          api: _api,
-                          onSelectTab: (i) => setState(() => _selectedIndex = i),
-                          onShowAllMeetings: _showAllMeetings,
-                          onOpenClient: _openClient,
-                          load: _load,
-                          clientsTotal: _statInt('clients', 'total'),
-                          contractsActive: _statInt('contracts', 'active'),
-                          paymentsPending: _statInt('payments', 'pending'),
-                          approvalsTotal: _statInt('approvals', 'total'),
-                        ),
-                        SaApprovalsPage(dashboardStatsProvider: _dashboardStatsProvider),
-                        _buildAmClientsTab(),
-                        AdminSettingsPage(api: _api),
-                      ],
-              ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (i) => setState(() => _selectedIndex = i),
-        backgroundColor: ShadColors.surfaceDarker,
-        indicatorColor: ShadColors.crimson.withAlpha(40),
-        height: 65,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: _isSA
-            ? [
-                NavigationDestination(
-                  icon: _badgeChat > 0
-                      ? Badge.count(
-                          count: _badgeChat,
-                          backgroundColor: ShadColors.crimson,
-                          textColor: Colors.white,
-                          textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                          child: const Icon(Icons.home_outlined))
-                      : const Icon(Icons.home_outlined),
-                  selectedIcon: _badgeChat > 0
-                      ? Badge.count(
-                          count: _badgeChat,
-                          backgroundColor: ShadColors.crimson,
-                          textColor: Colors.white,
-                          textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                          child: const Icon(Icons.home, color: ShadColors.gold))
-                      : const Icon(Icons.home, color: ShadColors.gold),
-                  label: loc.amNavHome,
-                ),
-                NavigationDestination(
-                  icon: _badgeApprovals > 0
-                      ? Badge.count(
-                          count: _badgeApprovals,
-                          backgroundColor: ShadColors.gold,
-                          textColor: Colors.black,
-                          textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                          child: const Icon(Icons.check_circle_outline))
-                      : const Icon(Icons.check_circle_outline),
-                  selectedIcon: _badgeApprovals > 0
-                      ? Badge.count(
-                          count: _badgeApprovals,
-                          backgroundColor: ShadColors.gold,
-                          textColor: Colors.black,
-                          textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                          child: const Icon(Icons.check_circle, color: ShadColors.gold))
-                      : const Icon(Icons.check_circle, color: ShadColors.gold),
-                  label: loc.amNavApprovals,
-                ),
-                NavigationDestination(
-                    icon: const Icon(Icons.people_outline),
-                    selectedIcon: const Icon(Icons.people, color: ShadColors.gold),
-                    label: loc.amNavClients),
-                NavigationDestination(
-                    icon: const Icon(Icons.supervisor_account_outlined),
-                    selectedIcon: const Icon(Icons.supervisor_account, color: ShadColors.gold),
-                    label: loc.amNavTeam),
-                NavigationDestination(
-                    icon: const Icon(Icons.settings_outlined),
-                    selectedIcon: const Icon(Icons.settings, color: ShadColors.gold),
-                    label: loc.amNavSettings),
-              ]
-            : [
-                NavigationDestination(
-                  icon: _badgeChat > 0
-                      ? Badge.count(
-                          count: _badgeChat,
-                          backgroundColor: ShadColors.crimson,
-                          textColor: Colors.white,
-                          textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                          child: const Icon(Icons.home_outlined))
-                      : const Icon(Icons.home_outlined),
-                  selectedIcon: _badgeChat > 0
-                      ? Badge.count(
-                          count: _badgeChat,
-                          backgroundColor: ShadColors.crimson,
-                          textColor: Colors.white,
-                          textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                          child: const Icon(Icons.home, color: ShadColors.gold))
-                      : const Icon(Icons.home, color: ShadColors.gold),
-                  label: loc.amNavHome,
-                ),
-                NavigationDestination(
-                  icon: _badgeApprovals > 0
-                      ? Badge.count(
-                          count: _badgeApprovals,
-                          backgroundColor: ShadColors.gold,
-                          textColor: Colors.black,
-                          textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                          child: const Icon(Icons.check_circle_outline))
-                      : const Icon(Icons.check_circle_outline),
-                  selectedIcon: _badgeApprovals > 0
-                      ? Badge.count(
-                          count: _badgeApprovals,
-                          backgroundColor: ShadColors.gold,
-                          textColor: Colors.black,
-                          textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                          child: const Icon(Icons.check_circle, color: ShadColors.gold))
-                      : const Icon(Icons.check_circle, color: ShadColors.gold),
-                  label: loc.amNavApprovals,
-                ),
-                NavigationDestination(
-                    icon: const Icon(Icons.people_outline),
-                    selectedIcon: const Icon(Icons.people, color: ShadColors.gold),
-                    label: loc.amNavClients),
-                NavigationDestination(
-                    icon: const Icon(Icons.settings_outlined),
-                    selectedIcon: const Icon(Icons.settings, color: ShadColors.gold),
-                    label: loc.amNavSettings),
-              ],
+      bottomNavigationBar: LuxeBottomNav(
+        items: navItems,
+        currentIndex: _selectedIndex >= moreIndex ? moreIndex : _selectedIndex,
+        onTap: (i) {
+          if (i == moreIndex) {
+            _showMoreSheet();
+            return;
+          }
+          setState(() => _selectedIndex = i);
+        },
       ),
     );
   }
 
   Widget _buildAmClientsTab() {
-    return Stack(
-      children: [
-        SaClientsPage(
-            clientProvider: _childClientProvider,
-            managerProvider: _childManagerProvider,
-            api: _api),
-        // Creating clients is the manager's job, not an assistant's.
-        if (!_isAssistant)
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: FloatingActionButton(
-              onPressed: () async {
-                final created = await context.push<bool>('/am/clients/create');
-                if (created == true) _load();
-              },
-              backgroundColor: ShadColors.gold,
-              child: const Icon(Icons.person_add, color: Colors.black),
-            ),
-          ),
-      ],
+    // Creating clients is the manager's job, not an assistant's.
+    return SaClientsPage(
+      clientProvider: _childClientProvider,
+      managerProvider: _childManagerProvider,
+      api: _api,
+      onCreateClient: _isAssistant
+          ? null
+          : () async {
+              final created = await context.push<bool>('/am/clients/create');
+              if (created == true) _load();
+            },
     );
   }
 
@@ -643,8 +643,9 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
+        backgroundColor: Lx.sheet,
         shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(Lx.rSheet))),
         builder: (_) => AllMeetingsSheet(
           meetings: meetings,
           onCreate: !_isSA ? _createMeeting : null,
@@ -666,8 +667,9 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
+        backgroundColor: Lx.sheet,
         shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(Lx.rSheet))),
         builder: (ctx) => ManagerClientsSheet(
           managerName: manager['name'] as String? ?? '',
           clients: clients,

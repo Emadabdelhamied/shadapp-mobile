@@ -82,6 +82,18 @@ void main() {
       expect(api.canDo('can_manage_meetings'), false);
     });
 
+    test('a company staff member may only view clients and chat', () {
+      final api = buildClient();
+      api.role = 'staff_member';
+      expect(api.isStaffMember, true);
+      expect(api.isAssistant, false);
+      expect(api.canDo('can_view_clients'), true);
+      expect(api.canDo('can_chat'), true);
+      for (final key in ['can_edit_clients', 'can_manage_contracts', 'can_manage_meetings', 'can_view_files', 'can_review_files', 'can_manage_approvals']) {
+        expect(api.canDo(key), false, reason: key);
+      }
+    });
+
     test('an assistant with no stored permissions can do nothing but view clients', () {
       final api = buildClient();
       api.role = 'manager_assistant';
@@ -133,6 +145,66 @@ void main() {
       final api = buildClient();
       api.role = 'account_manager';
       await api.refreshAssistantPermissions();
+      verifyNever(() => client.get(any(), headers: any(named: 'headers')));
+    });
+  });
+
+  group('contract approval permission', () {
+    test('the super admin always may company-approve; a manager only when granted', () {
+      final api = buildClient();
+      api.role = 'super_admin';
+      expect(api.canCompanyApprove, true);
+      api.role = 'account_manager';
+      expect(api.canCompanyApprove, false);
+      api.canApproveContracts = true;
+      expect(api.canCompanyApprove, true);
+    });
+
+    test('nobody else may, even with the flag set', () {
+      final api = buildClient();
+      api.canApproveContracts = true;
+      for (final role in ['manager_assistant', 'staff_member', 'client', 'sub_user']) {
+        api.role = role;
+        expect(api.canCompanyApprove, false, reason: role);
+      }
+    });
+
+    test('setCanApproveContracts persists, init() reads it back and clearToken forgets it', () async {
+      SharedPreferences.setMockInitialValues({'role': 'account_manager'});
+      final api = buildClient();
+      await api.setCanApproveContracts(true);
+
+      final fresh = buildClient();
+      await fresh.init();
+      expect(fresh.canApproveContracts, true);
+
+      await fresh.clearToken();
+      expect(fresh.canApproveContracts, false);
+    });
+
+    test('refreshContractApproval copies the flag from /auth/me for a manager', () async {
+      final api = buildClient();
+      api.role = 'account_manager';
+      when(() => client.get(any(), headers: any(named: 'headers'))).thenAnswer(
+        (_) async => http.Response('{"user":{"id":5,"can_approve_contracts":true}}', 200),
+      );
+      await api.refreshContractApproval();
+      expect(api.canCompanyApprove, true);
+    });
+
+    test('refreshContractApproval keeps the old value when the request fails', () async {
+      final api = buildClient();
+      api.role = 'account_manager';
+      api.canApproveContracts = true;
+      when(() => client.get(any(), headers: any(named: 'headers'))).thenThrow(Exception('offline'));
+      await api.refreshContractApproval();
+      expect(api.canCompanyApprove, true);
+    });
+
+    test('refreshContractApproval does not call the API for other roles', () async {
+      final api = buildClient();
+      api.role = 'super_admin';
+      await api.refreshContractApproval();
       verifyNever(() => client.get(any(), headers: any(named: 'headers')));
     });
   });

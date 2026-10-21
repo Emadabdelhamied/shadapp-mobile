@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../core/api_client.dart';
-import '../../../core/theme.dart';
 import '../../../core/helpers/meeting_helpers.dart';
-import '../../../core/widgets/loading_state.dart';
-import '../../../core/widgets/empty_state.dart';
+import '../../../core/luxe/tokens.dart';
+import '../../../core/theme.dart' show statusLabels;
 import '../../../core/widgets/error_state.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/loading_state.dart';
+import '../../../core/widgets/luxe/luxe_widgets.dart';
 import '../../../providers/contract_provider.dart';
 import '../../../providers/meeting_provider.dart';
 
@@ -16,14 +17,18 @@ class MeetingsTab extends StatefulWidget {
   final int? workspaceId;
   final MeetingProvider? meetingProvider;
   final ContractProvider? contractProvider;
-  const MeetingsTab({super.key, this.workspaceId, this.meetingProvider, this.contractProvider});
+  // Optional so a test can inject an ApiClient (e.g. a staff member with limited
+  // permissions); defaults to the real singleton.
+  final ApiClient? api;
+  const MeetingsTab(
+      {super.key, this.workspaceId, this.meetingProvider, this.contractProvider, this.api});
 
   @override
   State<MeetingsTab> createState() => _MeetingsTabState();
 }
 
 class _MeetingsTabState extends State<MeetingsTab> {
-  final _api = ApiClient();
+  late final ApiClient _api = widget.api ?? ApiClient();
   late final MeetingProvider _meetingProvider = widget.meetingProvider ?? MeetingProvider();
   late final ContractProvider _contractProvider = widget.contractProvider ?? ContractProvider();
   List<dynamic> _meetings = [];
@@ -37,12 +42,16 @@ class _MeetingsTabState extends State<MeetingsTab> {
   }
 
   Future<void> _load() async {
-    setState(() { if (_meetings.isEmpty) _loading = true; _error = null; });
+    setState(() {
+      if (_meetings.isEmpty) _loading = true;
+      _error = null;
+    });
     try {
       // 23 Sept 2026 - a super admin used to load /all-meetings here, so this
       // workspace's tab listed every client's meetings. Everyone now loads
       // this workspace's meetings only.
-      _meetings = await _meetingProvider.fetchForWorkspaceRaw((widget.workspaceId ?? _api.workspaceId)!);
+      _meetings =
+          await _meetingProvider.fetchForWorkspaceRaw((widget.workspaceId ?? _api.workspaceId)!);
     } catch (_) {
       if (mounted) _error = AppLocalizations.of(context)?.amMeetingsLoadFailed;
     }
@@ -52,8 +61,10 @@ class _MeetingsTabState extends State<MeetingsTab> {
   void _showCreateSheet() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Lx.sheet,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => _CreateMeetingForm(
         workspaceId: widget.workspaceId,
         onCreated: _load,
@@ -66,8 +77,10 @@ class _MeetingsTabState extends State<MeetingsTab> {
   void _showEditSheet(dynamic m) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Lx.sheet,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => _EditMeetingForm(
         meeting: m,
         workspaceId: widget.workspaceId,
@@ -88,7 +101,7 @@ class _MeetingsTabState extends State<MeetingsTab> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.meetingKeep)),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error),
+            style: ElevatedButton.styleFrom(backgroundColor: Lx.danger),
             child: Text(l10n.meetingCancelTitle, style: const TextStyle(color: Colors.white)),
           ),
         ],
@@ -98,11 +111,18 @@ class _MeetingsTabState extends State<MeetingsTab> {
     try {
       await _meetingProvider.cancelMeeting(m['id'] as int);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.meetingCancelSuccess))])));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(AppLocalizations.of(context)!.meetingCancelSuccess))
+        ])));
         _load();
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.meetingCancelFailed)));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.meetingCancelFailed)));
     }
   }
 
@@ -117,7 +137,7 @@ class _MeetingsTabState extends State<MeetingsTab> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.meetingBack)),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: ShadColors.success),
+            style: ElevatedButton.styleFrom(backgroundColor: Lx.ok),
             child: Text(l10n.meetingCompleteConfirm, style: const TextStyle(color: Colors.white)),
           ),
         ],
@@ -127,11 +147,18 @@ class _MeetingsTabState extends State<MeetingsTab> {
     try {
       await _meetingProvider.completeMeeting(m['id'] as int);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.meetingCompleteSuccess))])));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(AppLocalizations.of(context)!.meetingCompleteSuccess))
+        ])));
         _load();
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.meetingCompleteFailed)));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.meetingCompleteFailed)));
     }
   }
 
@@ -162,9 +189,12 @@ class _MeetingsTabState extends State<MeetingsTab> {
     if (dt == null) return '';
     try {
       final parsed = DateTime.parse(dt);
-      final time = '${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+      final time =
+          '${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
       return '${parsed.year}/${parsed.month}/${parsed.day} $time';
-    } catch (_) { return dt; }
+    } catch (_) {
+      return dt;
+    }
   }
 
   @override
@@ -179,44 +209,67 @@ class _MeetingsTabState extends State<MeetingsTab> {
       try {
         final scheduledAt = DateTime.parse(m['scheduled_at']);
         return scheduledAt.isAfter(now);
-      } catch (_) { return true; }
+      } catch (_) {
+        return true;
+      }
     }).toList();
     final past = _meetings.where((m) {
       if (m['status'] != 'scheduled') return true;
       try {
         final scheduledAt = DateTime.parse(m['scheduled_at']);
         return scheduledAt.isBefore(now);
-      } catch (_) { return false; }
+      } catch (_) {
+        return false;
+      }
     }).toList();
 
+    final canCreate = _api.role != 'super_admin' && _api.canDo('can_manage_meetings');
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _meetings.isEmpty
-          ? EmptyState(icon: Icons.videocam_outlined, title: l10n.amNoMeetings)
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (upcoming.isNotEmpty) ...[
-                  Text(l10n.meetingsUpcoming, style: ShadTypography.sectionHeader),
-                  const SizedBox(height: 8),
-                  ...upcoming.map(_meetingCard),
-                ],
-                if (past.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Text(l10n.meetingsPrevious, style: ShadTypography.sectionHeader),
-                  const SizedBox(height: 8),
-                  ...past.map(_meetingCard),
-                ],
+      backgroundColor: Colors.transparent,
+      body: LuxeFormTheme(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          color: Lx.crimsonInk,
+          child: ListView(
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 16, 28),
+            children: [
+              if (canCreate)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: LuxeButton(
+                      key: const ValueKey('meetings-new'),
+                      label: l10n.amMeetingCreateTitle,
+                      lxIcon: 'video',
+                      kind: LuxeButtonKind.primary,
+                      size: LuxeButtonSize.lg,
+                      onPressed: _showCreateSheet,
+                    ),
+                  ),
+                ),
+              if (_meetings.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child:
+                      Center(child: Text(l10n.amNoMeetings, style: Lx.display(context, size: 20))),
+                ),
+              if (upcoming.isNotEmpty) ...[
+                Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: LuxeKind(l10n.meetingsUpcoming)),
+                ...upcoming.map(_meetingCard),
               ],
-            ),
+              if (past.isNotEmpty) ...[
+                Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 8),
+                    child: LuxeKind(l10n.meetingsPrevious)),
+                ...past.map(_meetingCard),
+              ],
+            ],
+          ),
+        ),
       ),
-      floatingActionButton: (_api.role == 'super_admin' || !_api.canDo('can_manage_meetings'))
-          ? null
-          : FloatingActionButton(
-              onPressed: _showCreateSheet,
-              child: const Icon(Icons.add),
-            ),
     );
   }
 
@@ -224,182 +277,239 @@ class _MeetingsTabState extends State<MeetingsTab> {
     final l10n = AppLocalizations.of(context)!;
     final isScheduled = m['status'] == 'scheduled';
     final isSA = _api.role == 'super_admin';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            const Icon(Icons.videocam, size: 20, color: ShadColors.primary),
-            const SizedBox(width: 8),
-            Expanded(child: Text(m['title'] ?? '', style: ShadTypography.cardTitle)),
-            if (m['status'] != null) StatusBadge(status: m['status']),
-          ]),
-          const SizedBox(height: 8),
-          // Date and duration are a metadata pair, not a layout — at a larger
-          // text scale they wrap onto a second line instead of overflowing.
-          Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.schedule, size: 14, color: ShadColors.textSecondary),
-                const SizedBox(width: 4),
-                Flexible(child: Text(_formatDate(m['scheduled_at']), style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+    final when = DateTime.tryParse('${m['scheduled_at'] ?? ''}');
+    const months = [
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC'
+    ];
+    final statusKey = m['status'] as String?;
+    final dot = statusKey == 'completed'
+        ? LxStatus.off
+        : statusKey == 'cancelled'
+            ? LxStatus.bad
+            : LxStatus.wait;
+    return LuxeCard(
+      key: ValueKey('ws-meeting-${m['id']}'),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          if (when != null)
+            Container(
+              width: 46,
+              padding: const EdgeInsetsDirectional.only(end: 12),
+              margin: const EdgeInsetsDirectional.only(end: 12),
+              decoration:
+                  const BoxDecoration(border: BorderDirectional(end: BorderSide(color: Lx.line))),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(months[when.month - 1],
+                    style: Lx.text(context, size: 9.5, color: Lx.crimsonInk)
+                        .copyWith(letterSpacing: 1.9)),
+                Text('${when.day}', style: Lx.display(context, size: 26)),
               ]),
-              if (m['duration_minutes'] != null)
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.timer, size: 14, color: ShadColors.textSecondary),
-                  const SizedBox(width: 4),
-                  Flexible(child: Text('${m['duration_minutes']} ${l10n.amMeetingMinutes}', style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                ]),
-            ],
-          ),
-          if (m['notes'] != null) ...[
-            const SizedBox(height: 6),
-            Text(m['notes'], style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)),
-          ],
-          if (m['contract'] != null) ...[
-            const SizedBox(height: 8),
-            Row(children: [
-              const Icon(Icons.description, size: 14, color: ShadColors.textSecondary),
-              const SizedBox(width: 4),
-              Text('${l10n.meetingContract}: ${m['contract']['title'] ?? m['contract']['reference_no'] ?? ''}', style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)),
-            ]),
-          ],
-          if (m['passcode'] != null) ...[
-            const SizedBox(height: 6),
-            Row(children: [
-              const Icon(Icons.lock, size: 14, color: ShadColors.textSecondary),
-              const SizedBox(width: 4),
-              Text('${l10n.meetingPasscode}: ${m['passcode']}', style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)),
-              const SizedBox(width: 6),
-              InkWell(
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: m['passcode']));
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.meetingPasscodeCopied))])));
-                },
-                child: const Icon(Icons.copy, size: 14, color: ShadColors.primary),
-              ),
-            ]),
-          ],
-          if (m['status'] == 'scheduled' && m['link'] != null) ...[
-            const SizedBox(height: 12),
-            Builder(
-              builder: (ctx) {
-                final joinStatus = getMeetingJoinStatus(m['scheduled_at'], AppLocalizations.of(ctx)!);
-                final isZoom = m['zoom_meeting_id'] != null;
-                final hostUserId = m['host_user_id'] as int?;
-                final isHost = hostUserId == null || hostUserId == _api.userId;
-                final isEntering = _enteringMeetingId == m['id'];
-
-                final String buttonLabel;
-                if (isEntering) {
-                  buttonLabel = l10n.meeting_opening;
-                } else if (isZoom) {
-                  buttonLabel = isHost ? l10n.meeting_startAsHost : l10n.meeting_join;
-                } else {
-                  buttonLabel = joinStatus.label;
-                }
-
-                return Row(children: [
-                  Expanded(
-                    child: joinStatus.canJoin
-                        ? OutlinedButton.icon(
-                            onPressed: isEntering
-                                ? null
-                                : () => isZoom
-                                    ? _enterMeeting(m)
-                                    : launchUrl(Uri.parse(m['link']), mode: LaunchMode.externalApplication),
-                            icon: isEntering
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.videocam, size: 18),
-                            label: Text(buttonLabel),
-                          )
-                        : Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            decoration: BoxDecoration(
-                              color: ShadColors.meetingBlueBg,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: ShadColors.meetingBlueBorder.withAlpha(80)),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.schedule, size: 14, color: ShadColors.meetingBlue),
-                                const SizedBox(width: 6),
-                                Text(joinStatus.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ShadColors.meetingBlue)),
-                              ],
-                            ),
-                          ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 18),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: m['link']));
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.meetingLinkCopied))])));
-                    },
-                    tooltip: l10n.copyLink,
-                  ),
-                ]);
-              },
             ),
-          ],
-          if (isScheduled && !isSA && _api.canDo('can_manage_meetings')) ...[
-            const SizedBox(height: 12),
-            // 23 Sept 2026 — three buttons in equal Expanded thirds used to
-            // inherit the app-wide OutlinedButtonThemeData padding (24px
-            // horizontal, meant for a single full-width button), leaving
-            // almost no room for icon+label and causing them to collide.
-            // Same tighter-padding + explicit small-label-style override
-            // already used for multi-button rows elsewhere (see the
-            // Approve/Request-edit row in approvals_tab.dart).
-            Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showEditSheet(m),
-                  icon: const Icon(Icons.edit, size: 15),
-                  label: Text(l10n.edit, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _completeMeeting(m),
-                  icon: const Icon(Icons.check_circle_outline, size: 15, color: ShadColors.success),
-                  label: Text(l10n.meetingDone, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: ShadColors.success)),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _cancelMeeting(m),
-                  icon: const Icon(Icons.cancel_outlined, size: 15, color: ShadColors.error),
-                  label: Text(l10n.cancel, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: ShadColors.error)),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(m['title'] ?? '', style: Lx.text(context, size: 16)),
+              Row(children: [
+                const Icon(Icons.schedule, size: 13, color: Lx.muted),
+                const SizedBox(width: 4),
+                Flexible(
+                    child: Text(_formatDate(m['scheduled_at']),
+                        style: Lx.text(context, size: 12.5, color: Lx.muted))),
+                if (m['duration_minutes'] != null) ...[
+                  const SizedBox(width: 10),
+                  Text('${m['duration_minutes']} ${l10n.amMeetingMinutes}',
+                      style: Lx.text(context, size: 12.5, color: Lx.muted)),
+                ],
+              ]),
             ]),
-          ],
+          ),
         ]),
-      ),
+        if (statusKey != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              LuxeStatusDot(status: dot),
+              const SizedBox(width: 7),
+              Text(statusLabels(l10n)[statusKey] ?? statusKey,
+                  style: Lx.text(context, size: 12, color: Lx.ink2)),
+            ]),
+          ),
+        if (m['notes'] != null) ...[
+          const SizedBox(height: 6),
+          Text(m['notes'], style: Lx.text(context, size: 13, color: Lx.muted)),
+        ],
+        if (m['contract'] != null) ...[
+          const SizedBox(height: 8),
+          Row(children: [
+            const Icon(Icons.description, size: 14, color: Lx.muted),
+            const SizedBox(width: 4),
+            Text(
+                '${l10n.meetingContract}: ${m['contract']['title'] ?? m['contract']['reference_no'] ?? ''}',
+                style: Lx.text(context, size: 13, color: Lx.muted)),
+          ]),
+        ],
+        if (m['passcode'] != null) ...[
+          const SizedBox(height: 6),
+          Row(children: [
+            const Icon(Icons.lock, size: 14, color: Lx.muted),
+            const SizedBox(width: 4),
+            Text('${l10n.meetingPasscode}: ${m['passcode']}',
+                style: Lx.text(context, size: 13, color: Lx.muted)),
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: m['passcode']));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Row(children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(AppLocalizations.of(context)!.meetingPasscodeCopied))
+                ])));
+              },
+              child: const Icon(Icons.copy, size: 14, color: Lx.crimson),
+            ),
+          ]),
+        ],
+        if (m['status'] == 'scheduled' &&
+            m['link'] != null &&
+            _api.staffCan('can_join_meetings')) ...[
+          const SizedBox(height: 12),
+          Builder(
+            builder: (ctx) {
+              final joinStatus = getMeetingJoinStatus(m['scheduled_at'], AppLocalizations.of(ctx)!);
+              final isZoom = m['zoom_meeting_id'] != null;
+              final hostUserId = m['host_user_id'] as int?;
+              final isHost = hostUserId == null || hostUserId == _api.userId;
+              final isEntering = _enteringMeetingId == m['id'];
+
+              final String buttonLabel;
+              if (isEntering) {
+                buttonLabel = l10n.meeting_opening;
+              } else if (isZoom) {
+                buttonLabel = isHost ? l10n.meeting_startAsHost : l10n.meeting_join;
+              } else {
+                buttonLabel = joinStatus.label;
+              }
+
+              return Row(children: [
+                Expanded(
+                  child: joinStatus.canJoin
+                      ? OutlinedButton.icon(
+                          onPressed: isEntering
+                              ? null
+                              : () => isZoom
+                                  ? _enterMeeting(m)
+                                  : launchUrl(Uri.parse(m['link']),
+                                      mode: LaunchMode.externalApplication),
+                          icon: isEntering
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.videocam, size: 18),
+                          label: Text(buttonLabel),
+                        )
+                      : Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Lx.wait.withAlpha(13),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Lx.wait.withAlpha(90)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.schedule, size: 14, color: Lx.wait),
+                              const SizedBox(width: 6),
+                              Text(joinStatus.label,
+                                  style: TextStyle(
+                                      fontSize: 12, fontWeight: FontWeight.w600, color: Lx.wait)),
+                            ],
+                          ),
+                        ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 18),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: m['link']));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Row(children: [
+                      const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(AppLocalizations.of(context)!.meetingLinkCopied))
+                    ])));
+                  },
+                  tooltip: l10n.copyLink,
+                ),
+              ]);
+            },
+          ),
+        ],
+        if (isScheduled && !isSA && _api.canDo('can_manage_meetings')) ...[
+          const SizedBox(height: 12),
+          // 23 Sept 2026 — three buttons in equal Expanded thirds used to
+          // inherit the app-wide OutlinedButtonThemeData padding (24px
+          // horizontal, meant for a single full-width button), leaving
+          // almost no room for icon+label and causing them to collide.
+          // Same tighter-padding + explicit small-label-style override
+          // already used for multi-button rows elsewhere (see the
+          // Approve/Request-edit row in approvals_tab.dart).
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _showEditSheet(m),
+                icon: const Icon(Icons.edit, size: 15),
+                label: Text(l10n.edit,
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _completeMeeting(m),
+                icon: const Icon(Icons.check_circle_outline, size: 15, color: Lx.ok),
+                label: Text(l10n.meetingDone,
+                    style:
+                        const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Lx.ok)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _cancelMeeting(m),
+                icon: const Icon(Icons.cancel_outlined, size: 15, color: Lx.danger),
+                label: Text(l10n.cancel,
+                    style: const TextStyle(
+                        fontSize: 11.5, fontWeight: FontWeight.w600, color: Lx.danger)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ]),
+        ],
+      ]),
     );
   }
 }
@@ -409,7 +519,8 @@ class _CreateMeetingForm extends StatefulWidget {
   final VoidCallback onCreated;
   final MeetingProvider? meetingProvider;
   final ContractProvider? contractProvider;
-  const _CreateMeetingForm({this.workspaceId, required this.onCreated, this.meetingProvider, this.contractProvider});
+  const _CreateMeetingForm(
+      {this.workspaceId, required this.onCreated, this.meetingProvider, this.contractProvider});
 
   @override
   State<_CreateMeetingForm> createState() => _CreateMeetingFormState();
@@ -475,12 +586,19 @@ class _CreateMeetingFormState extends State<_CreateMeetingForm> {
         if (_selectedContractId != null) 'contract_id': _selectedContractId,
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.amMeetingCreated))])));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(AppLocalizations.of(context)!.amMeetingCreated))
+        ])));
         Navigator.pop(context);
         widget.onCreated();
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.amMeetingCreateFailed)));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.amMeetingCreateFailed)));
     }
     if (mounted) setState(() => _saving = false);
   }
@@ -496,86 +614,108 @@ class _CreateMeetingFormState extends State<_CreateMeetingForm> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 16),
+      padding:
+          EdgeInsetsDirectional.fromSTEB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 16),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Expanded(child: Text(l10n.amMeetingCreateTitle, style: ShadTypography.cardTitle, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Text(l10n.amMeetingCreateTitle, style: Lx.display(context, size: 22)),
+              const Spacer(),
               IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-          ]),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _titleController,
-            decoration: InputDecoration(labelText: '${l10n.amMeetingTitle} *', hintText: l10n.meetingTitleHint),
-          ),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-              child: InkWell(
-                onTap: () async {
-                  final d = await showDatePicker(context: context, initialDate: _date, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
-                  if (d != null) setState(() => _date = d);
-                },
-                child: InputDecorator(
-                  decoration: InputDecoration(labelText: l10n.amMeetingDate),
-                  child: Text('${_date.year}/${_date.month}/${_date.day}'),
+            ]),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _titleController,
+              decoration: InputDecoration(
+                  labelText: '${l10n.amMeetingTitle} *', hintText: l10n.meetingTitleHint),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final d = await showDatePicker(
+                        context: context,
+                        initialDate: _date,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)));
+                    if (d != null) setState(() => _date = d);
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(labelText: l10n.amMeetingDate),
+                    child: Text('${_date.year}/${_date.month}/${_date.day}'),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: InkWell(
-                onTap: () async {
-                  final t = await showTimePicker(context: context, initialTime: _time);
-                  if (t != null) setState(() => _time = t);
-                },
-                child: InputDecorator(
-                  decoration: InputDecoration(labelText: l10n.amMeetingTime),
-                  // format() follows the device's 12/24h setting, so a
-                  // 12-hour phone shows AM/PM — "11:47" alone hid whether
-                  // the picker had kept AM.
-                  child: Text(_time.format(context)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final t = await showTimePicker(context: context, initialTime: _time);
+                    if (t != null) setState(() => _time = t);
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(labelText: l10n.amMeetingTime),
+                    // format() follows the device's 12/24h setting, so a
+                    // 12-hour phone shows AM/PM — "11:47" alone hid whether
+                    // the picker had kept AM.
+                    child: Text(_time.format(context)),
+                  ),
                 ),
               ),
-            ),
-          ]),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-            isExpanded: true,
-            initialValue: _duration,
-            decoration: InputDecoration(labelText: '${l10n.amMeetingDuration} (${l10n.amMeetingMinutes})'),
-            items: [15, 30, 45, 60, 90, 120].map((d) => DropdownMenuItem(value: d, child: Text('$d ${l10n.amMeetingMinutes}'))).toList(),
-            onChanged: (v) { if (v != null) setState(() => _duration = v); },
-          ),
-          const SizedBox(height: 12),
-          if (!_loadingContracts && _contracts.isNotEmpty)
+            ]),
+            const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               isExpanded: true,
-              initialValue: _selectedContractId,
-              decoration: InputDecoration(labelText: l10n.meetingRelatedContract),
-              items: _contracts.map((c) => DropdownMenuItem(value: c['id'] as int?, child: Text(c['title'] ?? '#${c['id']}'))).toList(),
-              onChanged: (v) { if (v != null) setState(() => _selectedContractId = v); },
+              initialValue: _duration,
+              decoration: InputDecoration(
+                  labelText: '${l10n.amMeetingDuration} (${l10n.amMeetingMinutes})'),
+              items: [15, 30, 45, 60, 90, 120]
+                  .map(
+                      (d) => DropdownMenuItem(value: d, child: Text('$d ${l10n.amMeetingMinutes}')))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _duration = v);
+              },
             ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _notesController,
-            decoration: InputDecoration(labelText: l10n.amMeetingNotes, hintText: l10n.meetingNotesHint),
-            maxLines: 2,
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _saving ? null : _submit,
-              child: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                   : Text(l10n.createMeeting),
+            const SizedBox(height: 12),
+            if (!_loadingContracts && _contracts.isNotEmpty)
+              DropdownButtonFormField<int>(
+                isExpanded: true,
+                initialValue: _selectedContractId,
+                decoration: InputDecoration(labelText: l10n.meetingRelatedContract),
+                items: _contracts
+                    .map((c) => DropdownMenuItem(
+                        value: c['id'] as int?, child: Text(c['title'] ?? '#${c['id']}')))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) setState(() => _selectedContractId = v);
+                },
+              ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _notesController,
+              decoration:
+                  InputDecoration(labelText: l10n.amMeetingNotes, hintText: l10n.meetingNotesHint),
+              maxLines: 2,
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _submit,
+                child: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(l10n.createMeeting),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -587,7 +727,8 @@ class _EditMeetingForm extends StatefulWidget {
   final int? workspaceId;
   final VoidCallback onUpdated;
   final MeetingProvider? meetingProvider;
-  const _EditMeetingForm({required this.meeting, this.workspaceId, required this.onUpdated, this.meetingProvider});
+  const _EditMeetingForm(
+      {required this.meeting, this.workspaceId, required this.onUpdated, this.meetingProvider});
 
   @override
   State<_EditMeetingForm> createState() => _EditMeetingFormState();
@@ -642,12 +783,19 @@ class _EditMeetingFormState extends State<_EditMeetingForm> {
         'notes': _notesController.text.trim(),
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 18), const SizedBox(width: 8), Expanded(child: Text(AppLocalizations.of(context)!.meetingUpdateSuccess))])));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(AppLocalizations.of(context)!.meetingUpdateSuccess))
+        ])));
         Navigator.pop(context);
         widget.onUpdated();
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.meetingUpdateFailed)));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.meetingUpdateFailed)));
     }
     if (mounted) setState(() => _saving = false);
   }
@@ -663,77 +811,92 @@ class _EditMeetingFormState extends State<_EditMeetingForm> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 16),
+      padding:
+          EdgeInsetsDirectional.fromSTEB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 16),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Expanded(child: Text(l10n.meetingEditTitle, style: ShadTypography.cardTitle, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Text(l10n.meetingEditTitle, style: Lx.display(context, size: 22)),
+              const Spacer(),
               IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-          ]),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _titleController,
-            decoration: InputDecoration(labelText: '${l10n.amMeetingTitle} *'),
-          ),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-              child: InkWell(
-                onTap: () async {
-                  final d = await showDatePicker(context: context, initialDate: _date, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
-                  if (d != null) setState(() => _date = d);
-                },
-                child: InputDecorator(
-                  decoration: InputDecoration(labelText: l10n.amMeetingDate),
-                  child: Text('${_date.year}/${_date.month}/${_date.day}'),
+            ]),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _titleController,
+              decoration: InputDecoration(labelText: '${l10n.amMeetingTitle} *'),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final d = await showDatePicker(
+                        context: context,
+                        initialDate: _date,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)));
+                    if (d != null) setState(() => _date = d);
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(labelText: l10n.amMeetingDate),
+                    child: Text('${_date.year}/${_date.month}/${_date.day}'),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: InkWell(
-                onTap: () async {
-                  final t = await showTimePicker(context: context, initialTime: _time);
-                  if (t != null) setState(() => _time = t);
-                },
-                child: InputDecorator(
-                  decoration: InputDecoration(labelText: l10n.amMeetingTime),
-                  // format() follows the device's 12/24h setting, so a
-                  // 12-hour phone shows AM/PM — "11:47" alone hid whether
-                  // the picker had kept AM.
-                  child: Text(_time.format(context)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final t = await showTimePicker(context: context, initialTime: _time);
+                    if (t != null) setState(() => _time = t);
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(labelText: l10n.amMeetingTime),
+                    // format() follows the device's 12/24h setting, so a
+                    // 12-hour phone shows AM/PM — "11:47" alone hid whether
+                    // the picker had kept AM.
+                    child: Text(_time.format(context)),
+                  ),
                 ),
               ),
+            ]),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              isExpanded: true,
+              initialValue: _duration,
+              decoration: InputDecoration(
+                  labelText: '${l10n.amMeetingDuration} (${l10n.amMeetingMinutes})'),
+              items: [15, 30, 45, 60, 90, 120]
+                  .map(
+                      (d) => DropdownMenuItem(value: d, child: Text('$d ${l10n.amMeetingMinutes}')))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _duration = v);
+              },
             ),
-          ]),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-            isExpanded: true,
-            initialValue: _duration,
-            decoration: InputDecoration(labelText: '${l10n.amMeetingDuration} (${l10n.amMeetingMinutes})'),
-            items: [15, 30, 45, 60, 90, 120].map((d) => DropdownMenuItem(value: d, child: Text('$d ${l10n.amMeetingMinutes}'))).toList(),
-            onChanged: (v) { if (v != null) setState(() => _duration = v); },
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _notesController,
-            decoration: InputDecoration(labelText: l10n.amMeetingNotes),
-            maxLines: 2,
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _saving ? null : _submit,
-              child: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text(l10n.saveChanges),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _notesController,
+              decoration: InputDecoration(labelText: l10n.amMeetingNotes),
+              maxLines: 2,
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _submit,
+                child: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(l10n.saveChanges),
+              ),
+            ),
+          ],
         ),
       ),
     );

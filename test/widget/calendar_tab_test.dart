@@ -25,6 +25,10 @@ void main() {
     ApprovalProvider approvalProvider,
     dynamic api,
   ) async {
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -145,7 +149,7 @@ void main() {
     expect(find.textContaining('Kickoff'), findsNothing);
 
     failPayments = false;
-    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.tap(find.byType(OutlinedButton)); // ErrorState's Retry
     await tester.pumpAndSettle();
 
     expect(find.text('Failed to load data'), findsNothing);

@@ -4,12 +4,15 @@ import 'package:shadapp_client/features/auth/register_screen.dart';
 import '../features/am/clients/client_detail_page.dart';
 import '../features/am/clients/create_client_page.dart';
 import '../features/am/dashboard/am_dashboard_page.dart';
+import '../features/am/finance/finance_page.dart';
 import '../features/am/managers/account_managers_page.dart';
 import '../features/am/managers/create_manager_page.dart';
 import '../features/am/managers/manager_detail_page.dart';
-import '../features/am/reports/audit_log_page.dart';
 import '../features/am/reports/reports_page.dart';
 import '../features/am/settings/admin_settings_page.dart';
+import '../features/am/staff/my_team_page.dart';
+import '../features/am/staff/staff_page.dart';
+import '../features/am/workspace/am_workspace_page.dart';
 import '../features/am/workspace/am_workspace_page.dart';
 import '../features/auth/forgot_password_page.dart';
 import '../features/auth/login_page.dart';
@@ -17,8 +20,7 @@ import '../features/dashboard/dashboard_page.dart';
 import '../features/notifications/notifications_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/settings/settings_page.dart';
-import '../features/signature/signature_page.dart';
-import 'api_client.dart';
+import '../features/staff/staff_dashboard_page.dart';
 
 const _publicLocations = ['/login', '/forgot-password', '/register'];
 
@@ -27,6 +29,19 @@ const _publicLocations = ['/login', '/forgot-password', '/register'];
 /// `/notifications`, `/signature`, plus the public routes above) is shared
 /// between client/sub_user and staff, so it's deliberately not gated here.
 bool _isStaffOnly(String location) => location.startsWith('/am/');
+
+// Company staff members (STAFF_TEAMS_PLAN.md) see only their own client list,
+// a client's workspace, notifications and their profile. Anything else — every
+// other /am/* screen included — sends them back to their client list.
+const _staffAllowedPrefixes = ['/staff', '/am/workspace', '/notifications', '/profile'];
+bool _isStaffAllowed(String location) => _staffAllowedPrefixes.any(location.startsWith);
+
+/// Where a role lands after login / when it opens a screen it may not see.
+String homeLocationForRole(String? role) {
+  if (role == 'client' || role == 'sub_user') return '/dashboard';
+  if (role == 'staff_member') return '/staff/dashboard';
+  return '/am/dashboard';
+}
 
 const _assistantBlockedPrefixes = [
   '/am/reports',
@@ -65,10 +80,25 @@ Future<String?> resolveAuthRedirect(ApiClient api, String location) async {
 
   final role = await api.getRole();
   if (goingToPublic) {
-    return (role == 'client' || role == 'sub_user') ? '/dashboard' : '/am/dashboard';
+    return homeLocationForRole(role);
   }
   if (_isStaffOnly(location) && (role == 'client' || role == 'sub_user')) {
     return '/dashboard';
+  }
+  // The staff-member home is theirs alone.
+  if (location.startsWith('/staff') && role != 'staff_member') {
+    return homeLocationForRole(role);
+  }
+  if (role == 'staff_member' && !_isStaffAllowed(location)) {
+    return '/staff/dashboard';
+  }
+  // Managing company staff is the super admin's alone.
+  if (location.startsWith('/am/staff') && role != 'super_admin') {
+    return homeLocationForRole(role);
+  }
+  // The manager's own team of company staff is the account manager's alone.
+  if (location.startsWith('/am/my-team') && role != 'account_manager') {
+    return homeLocationForRole(role);
   }
   // Manager assistants have no finance/reports/audit/managers screens.
   if (role == 'manager_assistant' && _isAssistantBlocked(location)) {
@@ -120,8 +150,12 @@ GoRouter createRouter(ApiClient api, {String initialLocation = '/login'}) {
             final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '');
             return AmWorkspacePage(workspaceId: wsId, initialTabIndex: tab ?? 0);
           }),
+      GoRoute(path: '/am/finance', builder: (_, __) => const FinancePage()),
       GoRoute(path: '/am/reports', builder: (_, __) => const ReportsPage()),
       GoRoute(path: '/am/audit-logs', builder: (_, __) => const AuditLogPage()),
+      GoRoute(path: '/staff/dashboard', builder: (_, __) => const StaffDashboardPage()),
+      GoRoute(path: '/am/staff', builder: (_, __) => const StaffPage()),
+      GoRoute(path: '/am/my-team', builder: (_, __) => const MyTeamPage()),
       GoRoute(path: '/am/settings', builder: (_, __) => const AdminSettingsPage()),
       GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
       GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),

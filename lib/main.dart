@@ -8,11 +8,11 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:shadapp_client/generated/app_localizations.dart';
 
 import 'core/api_client.dart';
 import 'core/app_log.dart';
 import 'core/locale_provider.dart';
+import 'core/luxe/luxe_theme.dart';
 import 'core/notification_routing.dart';
 import 'core/notification_service.dart';
 import 'core/router.dart';
@@ -100,20 +100,16 @@ Future<Widget> _bootstrap() async {
   }
 
   final api = ApiClient();
-  // Restoring the saved session reads the keychain and shared preferences,
-  // either of which can fail on a device. Falling back to the login screen is
-  // a recoverable outcome; not starting at all is not.
-  String initialLocation = '/login';
-  try {
-    await api.init();
-    if (await api.getToken() != null) {
-      final role = await api.getRole();
-      initialLocation = (role == 'client' || role == 'sub_user') ? '/dashboard' : '/am/dashboard';
-    }
-  } catch (e, s) {
-    AppLog.error('main.restoreSession', e, s);
+  await api.init();
+  final token = await api.getToken();
+  final loggedIn = token != null;
+  String initialLocation;
+  if (!loggedIn) {
+    initialLocation = '/login';
+  } else {
+    final role = await api.getRole();
+    initialLocation = homeLocationForRole(role);
   }
-
   router = createRouter(api, initialLocation: initialLocation);
   // Only fires on a server-forced 401 (see api_client.dart's onSessionExpired
   // doc comment) — a manual logout already navigates itself and never hits
@@ -244,7 +240,7 @@ class _ShadAppState extends State<ShadApp> {
       builder: (context, _) => MaterialApp.router(
         title: 'Shad',
         debugShowCheckedModeBanner: false,
-        theme: shadTheme(),
+        theme: luxeTheme(arabic: widget.localeProvider.locale.languageCode == 'ar'),
         locale: widget.localeProvider.locale,
         localizationsDelegates: const [
           AppLocalizations.delegate,

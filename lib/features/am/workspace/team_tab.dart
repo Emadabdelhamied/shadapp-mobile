@@ -1,0 +1,292 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shadapp_client/generated/app_localizations.dart';
+import '../../../core/api_client.dart';
+import '../../../core/app_log.dart';
+import '../../../core/luxe/tokens.dart';
+import '../../../core/widgets/luxe/luxe_widgets.dart';
+import '../../../core/widgets/loading_state.dart';
+import '../../../data/staff_permissions.dart';
+import '../../../data/staff_repository.dart';
+import '../staff/team_widgets.dart';
+
+/// The "Team" tab inside a client's workspace (STAFF_TEAMS_PLAN.md ف٦): the
+/// client's account manager — or the super admin — picks which company staff
+/// members work on this client. Every active staff member is listed with an
+/// assign / remove button. The backend decides who may do this.
+class TeamTab extends StatefulWidget {
+  final int? workspaceId;
+  final StaffRepository? repository;
+  final ApiClient? api;
+  // Shown in the permissions sheet when the super admin edits one assignment.
+  final String? clientName;
+  const TeamTab({super.key, this.workspaceId, this.repository, this.api, this.clientName});
+
+  @override
+  State<TeamTab> createState() => _TeamTabState();
+}
+
+class _TeamTabState extends State<TeamTab> {
+  late final ApiClient _api = widget.api ?? ApiClient();
+  late final StaffRepository _repo = widget.repository ?? StaffRepository(api: _api);
+  List<Map<String, dynamic>> _staff = [];
+  bool _loading = true;
+  bool _loadFailed = false;
+  String? _error;
+  int? _busyId;
+
+  bool get _isManager => _api.role == 'account_manager';
+
+  int? get _wsId => widget.workspaceId ?? _api.workspaceId;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final wsId = _wsId;
+    if (wsId == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _loadFailed = false;
+    });
+    try {
+      final rows = await _repo.forWorkspace(wsId);
+      if (!mounted) return;
+      setState(() {
+        _staff = rows;
+        _loading = false;
+      });
+    } catch (e, s) {
+      AppLog.error('team_tab._load', e, s);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadFailed = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggle(Map<String, dynamic> m) async {
+    final wsId = _wsId;
+    if (wsId == null) return;
+    final id = m['id'] as int;
+    final assigned = m['assigned'] == true;
+    setState(() {
+      _busyId = id;
+      _error = null;
+    });
+    try {
+      if (assigned) {
+        await _repo.unassign(wsId, id);
+      } else {
+        await _repo.assign(wsId, id);
+      }
+      if (!mounted) return;
+      setState(() {
+        if (assigned && m['in_my_team'] == false) {
+          _staff.remove(m);
+        } else {
+          m['assigned'] = !assigned;
+          m['permissions'] = assigned ? null : allStaffPermissions();
+        }
+      });
+    } catch (e, s) {
+      AppLog.error('team_tab._toggle', e, s);
+      if (mounted) setState(() => _error = AppLocalizations.of(context)!.teamTabSaveFailed);
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  /// A manager's "not in your team" row: add the person to his team.
+  Future<void> _addToMyTeam(Map<String, dynamic> m) async {
+    final id = m['id'] as int;
+    setState(() {
+      _busyId = id;
+      _error = null;
+    });
+    try {
+      await _repo.addToTeam(id);
+      if (!mounted) return;
+      setState(() => m['in_my_team'] = true);
+    } catch (e, s) {
+      AppLog.error('team_tab._addToMyTeam', e, s);
+      if (mounted) setState(() => _error = AppLocalizations.of(context)!.teamTabSaveFailed);
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  /// Super admin: edit one assignment's permissions in a bottom sheet.
+  Future<void> _editPermissions(Map<String, dynamic> m) async {
+    final wsId = _wsId;
+    if (wsId == null) return;
+    final res = await showPermissionsSheet(
+      context,
+      memberName: '${m['name']}',
+      fixedWorkspaceId: wsId,
+      fixedClientName: widget.clientName ?? '',
+      initial: normalizeStaffPermissions(m['permissions']),
+    );
+    if (res == null) return;
+    try {
+      await _repo.assign(wsId, m['id'] as int, permissions: res.permissions);
+      if (mounted) setState(() => m['permissions'] = res.permissions);
+    } catch (e, s) {
+      AppLog.error('team_tab._editPermissions', e, s);
+      if (mounted) setState(() => _error = AppLocalizations.of(context)!.teamTabSaveFailed);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    if (_loading) return const LoadingState();
+    final outsiders = _staff.where((m) => m['assigned'] == true && m['in_my_team'] == false).toList();
+    final regular = _staff.where((m) => !(m['assigned'] == true && m['in_my_team'] == false)).toList();
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: Lx.crimsonInk,
+      child: ListView(
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 16, 28),
+        children: [
+          Text(_isManager ? l10n.teamTabHintManager : l10n.teamTabHint, style: Lx.text(context, size: 12.5, color: Lx.muted, height: 1.5)),
+          if (_isManager)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: LuxeButton(
+                key: const ValueKey('team-open-page'),
+                label: l10n.mtOpenTeamPage,
+                size: LuxeButtonSize.sm,
+                kind: LuxeButtonKind.quiet,
+                onPressed: () => context.push('/am/my-team'),
+              ),
+            ),
+          const SizedBox(height: 12),
+          if (_loadFailed)
+            Text(l10n.teamTabLoadFailed, style: const TextStyle(fontSize: 13, color: Lx.crimson)),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(_error!, style: const TextStyle(fontSize: 13, color: Lx.crimson)),
+            ),
+          if (!_loadFailed && _staff.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Center(child: Text(_isManager ? l10n.teamTabEmptyManager : l10n.teamTabEmpty, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: Lx.faint))),
+            ),
+          for (final m in regular) _row(m, l10n),
+          for (final m in outsiders) _outsiderRow(m, l10n),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatar(Map<String, dynamic> m) {
+    final name = (m['name'] as String?) ?? '';
+    final url = (m['avatar_url'] as String?) ?? '';
+    if (url.isNotEmpty) {
+      return CircleAvatar(radius: 20, backgroundImage: NetworkImage(_api.resolveFileUrl(url)));
+    }
+    return LuxeAvatar(initial: name.isEmpty ? '?' : name.substring(0, 1).toUpperCase(), size: 40);
+  }
+
+  Widget _row(Map<String, dynamic> m, AppLocalizations l10n) {
+    final assigned = m['assigned'] == true;
+    final name = (m['name'] as String?) ?? '';
+    return LuxeCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          _avatar(m),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name, style: Lx.display(context, size: 16)),
+              Text((m['email'] as String?) ?? '', style: Lx.text(context, size: 12, color: Lx.muted)),
+            ]),
+          ),
+          LuxeButton(
+            key: ValueKey('team-toggle-${m['id']}'),
+            label: assigned ? l10n.teamTabUnassign : l10n.teamTabAssign,
+            size: LuxeButtonSize.sm,
+            kind: assigned ? LuxeButtonKind.danger : LuxeButtonKind.outline,
+            onPressed: _busyId == m['id'] ? null : () => _toggle(m),
+          ),
+        ]),
+        if (assigned && m['permissions'] != null) ...[
+          const SizedBox(height: 10),
+          PermissionChips(permissions: normalizeStaffPermissions(m['permissions'])),
+        ],
+        if (assigned && _api.role == 'super_admin')
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: LuxeButton(
+              key: ValueKey('team-edit-${m['id']}'),
+              label: l10n.mtEditPerms,
+              size: LuxeButtonSize.sm,
+              kind: LuxeButtonKind.quiet,
+              onPressed: () => _editPermissions(m),
+            ),
+          ),
+      ]),
+    );
+  }
+
+  /// Someone assigned before this client moved to the manager, who is not in
+  /// his team (PLAN_2 ق٤): shown apart, with "Add to my team" and "Remove".
+  Widget _outsiderRow(Map<String, dynamic> m, AppLocalizations l10n) {
+    final name = (m['name'] as String?) ?? '';
+    return LuxeCard(
+      key: ValueKey('team-outsider-${m['id']}'),
+      attention: true,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          _avatar(m),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name, style: Lx.display(context, size: 16)),
+              Text((m['email'] as String?) ?? '', style: Lx.text(context, size: 12, color: Lx.muted)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        Text('${l10n.mtNotMine} — ${l10n.mtNotMineHint}', style: Lx.text(context, size: 12, color: Lx.wait)),
+        if (m['permissions'] != null) ...[
+          const SizedBox(height: 8),
+          PermissionChips(permissions: normalizeStaffPermissions(m['permissions'])),
+        ],
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(
+            child: LuxeButton(
+              key: ValueKey('team-add-mine-${m['id']}'),
+              label: l10n.mtAddMine,
+              size: LuxeButtonSize.sm,
+              kind: LuxeButtonKind.outline,
+              onPressed: _busyId == m['id'] ? null : () => _addToMyTeam(m),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: LuxeButton(
+              key: ValueKey('team-toggle-${m['id']}'),
+              label: l10n.teamTabUnassign,
+              size: LuxeButtonSize.sm,
+              kind: LuxeButtonKind.danger,
+              onPressed: _busyId == m['id'] ? null : () => _toggle(m),
+            ),
+          ),
+        ]),
+      ]),
+    );
+  }
+}

@@ -102,7 +102,7 @@ void main() {
     // client info — a pre-existing duplication, not asserting an exact
     // count here.
     expect(find.text('Ali'), findsWidgets);
-    expect(find.byIcon(Icons.keyboard_arrow_left), findsOneWidget);
+    expect(find.byKey(const ValueKey('ws-back')), findsOneWidget);
   });
   testWidgets('an assistant has no Payments tab and the rest still load', (tester) async {
     final httpClient = MockHttpClient();
@@ -119,6 +119,58 @@ void main() {
     expect(find.text('Acme'), findsOneWidget);
     // never asked the payments endpoint
     verifyNever(() => httpClient.get(any(that: predicate<Uri>((u) => u.path == '/workspaces/5/payments')), headers: any(named: 'headers')));
+  });
+
+  testWidgets('a company staff member sees only Chat, Approvals and Meetings, and never asks for contracts', (tester) async {
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.role = 'staff_member';
+    stubCommon(httpClient);
+
+    await pumpPage(tester, api);
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(AmWorkspacePage)))!;
+    expect(find.text(l10n.workspaceTabChat), findsOneWidget);
+    expect(find.text(l10n.workspaceTabApprovals), findsOneWidget);
+    expect(find.text(l10n.workspaceTabMeetings), findsOneWidget);
+    for (final hidden in [
+      l10n.workspaceTabFiles,
+      l10n.workspaceTabContracts,
+      l10n.workspaceTabPayments,
+      l10n.workspaceTabLog,
+      l10n.workspaceTabClientProfile,
+      l10n.workspaceTabTeam,
+    ]) {
+      expect(find.text(hidden), findsNothing, reason: hidden);
+    }
+    for (final path in ['/workspaces/5/contracts', '/workspaces/5/payments', '/workspaces/5/files', '/clients/20/profile']) {
+      verifyNever(() => httpClient.get(any(that: predicate<Uri>((u) => u.path == path)), headers: any(named: 'headers')));
+    }
+  });
+
+  testWidgets('a manager and the super admin get the Team tab, an assistant does not', (tester) async {
+    for (final role in ['account_manager', 'super_admin']) {
+      final httpClient = MockHttpClient();
+      final api = buildTestApiClient(client: httpClient);
+      api.role = role;
+      stubCommon(httpClient);
+
+      await pumpPage(tester, api);
+
+      final l10n = AppLocalizations.of(tester.element(find.byType(AmWorkspacePage)))!;
+      expect(find.widgetWithText(Tab, l10n.workspaceTabTeam), findsOneWidget, reason: role);
+    }
+
+    // Tear the previous page down first: pumping a new AmWorkspacePage over the
+    // old one would reuse its State (and its already-built TabController).
+    await tester.pumpWidget(const SizedBox());
+    final httpClient = MockHttpClient();
+    final api = buildTestApiClient(client: httpClient);
+    api.role = 'manager_assistant';
+    stubCommon(httpClient);
+    await pumpPage(tester, api);
+    final l10n = AppLocalizations.of(tester.element(find.byType(AmWorkspacePage)))!;
+    expect(find.widgetWithText(Tab, l10n.workspaceTabTeam), findsNothing);
   });
 
   testWidgets('a manager still has the Payments tab', (tester) async {

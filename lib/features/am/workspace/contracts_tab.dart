@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show DateFormat;
+import 'package:shadapp_client/generated/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../../core/api_client.dart';
 import '../../../core/app_log.dart';
-import '../../../core/theme.dart';
-import 'package:shadapp_client/generated/app_localizations.dart';
-import '../../../core/widgets/loading_state.dart';
-import '../../../core/widgets/empty_state.dart';
+import '../../../core/luxe/lx_icons.dart';
+import '../../../core/luxe/tokens.dart';
+import '../../../core/theme.dart' show statusLabels;
 import '../../../core/widgets/error_state.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/loading_state.dart';
+import '../../../core/widgets/luxe/luxe_widgets.dart';
 import '../../../providers/contract_provider.dart';
 import '../widgets/contract_builder.dart';
 
@@ -28,7 +31,8 @@ class ContractsTab extends StatefulWidget {
 
 class _ContractsTabState extends State<ContractsTab> {
   late final ApiClient _api = widget.api ?? ApiClient();
-  late final ContractProvider _contractProvider = widget.contractProvider ?? ContractProvider(api: _api);
+  late final ContractProvider _contractProvider =
+      widget.contractProvider ?? ContractProvider(api: _api);
   List<dynamic> _contracts = [];
   bool _loading = true;
   String? _error;
@@ -44,7 +48,10 @@ class _ContractsTabState extends State<ContractsTab> {
   Future<void> _load() async {
     final wsId = widget.workspaceId ?? _api.workspaceId;
     if (wsId == null) return;
-    setState(() { if (_contracts.isEmpty) _loading = true; _error = null; });
+    setState(() {
+      if (_contracts.isEmpty) _loading = true;
+      _error = null;
+    });
     try {
       // Dispatched together, then awaited separately — see the matching
       // comment in contracts_page.dart's _load(), which hit the same
@@ -83,136 +90,171 @@ class _ContractsTabState extends State<ContractsTab> {
     try {
       await _contractProvider.performAction(id, action);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractUpdated)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractUpdated)));
         await _load();
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
     }
   }
 
   Future<void> _editContract(Map<String, dynamic> c) async {
-            await ContractBuilder.show(context, contractId: c['id'], contractData: c, isAdditional: c['contract_type'] == 'additional', onCreated: _load, api: _api, contractProvider: _contractProvider);
+    await ContractBuilder.show(context,
+        contractId: c['id'],
+        contractData: c,
+        isAdditional: c['contract_type'] == 'additional',
+        onCreated: _load,
+        api: _api,
+        contractProvider: _contractProvider,
+        workspaceId: widget.workspaceId ?? _api.workspaceId);
   }
 
+  /// Mockup step index for a status: steps before it are done, it is "now".
+  int _stepFor(String status) {
+    switch (status) {
+      case 'sent':
+        return 1;
+      case 'client_approved':
+        return 2;
+      case 'company_approved':
+        return 3;
+      case 'completed':
+      case 'active':
+        return 4;
+      default:
+        return 0;
+    }
+  }
+
+  String _shortDate(dynamic date) {
+    final t = DateTime.tryParse(date?.toString() ?? '')?.toLocal();
+    if (t == null) return '';
+    return DateFormat('d MMM', Localizations.localeOf(context).toString()).format(t);
+  }
+
+  Future<void> _openPdf(Map<String, dynamic> c) async {
+    final url = _api.resolveFileUrl(c['pdf_url'] as String);
+    final uri = Uri.tryParse(url);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  /// Contract details in the mockup's sheet language: `.sheet` + `.grab`,
+  /// h3 serif 22, `.kind`, `.amt`, the step bar, numbered clause rows
+  /// (`.clr`) and `.doc` rows for required documents.
   void _showContractDetail(Map<String, dynamic> c) {
     final l10n = AppLocalizations.of(context)!;
     final clauses = (c['clauses'] as List<dynamic>?) ?? [];
     final docs = (c['required_documents'] as List<dynamic>?) ?? [];
     final hasPdf = c['pdf_url'] != null && (c['pdf_url'] as String).isNotEmpty;
+    final status = c['status'] as String? ?? '';
+    final amt = num.tryParse('${c['value'] ?? 0}');
+    final steps = [
+      l10n.contractStepSent,
+      l10n.contractStepClientApproved,
+      l10n.contractStepCompanyApproved,
+      l10n.contractStepActive
+    ];
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: ShadColors.card,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.92,
-        expand: false,
-        builder: (_, scrollController) => Column(children: [
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(color: ShadColors.textDisabled, borderRadius: BorderRadius.circular(2)),
+    showLuxeSheet<void>(context, builder: (ctx) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        LuxeKind(c['contract_type'] == 'additional'
+            ? l10n.contractKindAdditional
+            : l10n.contractKindMain),
+        const SizedBox(height: 4),
+        Text(c['title'] ?? '',
+            key: const ValueKey('contract-sheet-title'), style: Lx.display(ctx, size: 22)),
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text.rich(TextSpan(children: [
+              TextSpan(
+                  text: amt != null ? lxFormatMoney(amt) : '${c['value'] ?? 0}',
+                  style: Lx.display(ctx, size: 20)),
+              TextSpan(
+                  text: ' ${c['currency'] ?? 'SAR'}',
+                  style: Lx.text(ctx, size: 11, color: Lx.muted)),
+            ])),
           ),
-          Expanded(
-            child: ListView(
-              controller: scrollController,
-              padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 30),
-              children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Expanded(child: Text(c['title'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay'))),
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, size: 20)),
-                ]),
-                const SizedBox(height: 4),
-                Text('${c['value'] ?? 0} ${c['currency'] ?? 'SAR'}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
-                if (_clientType == 'business')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(l10n.contractValueExclVat, style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-                  ),
-                const SizedBox(height: 6),
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: ShadColors.crimson.withAlpha(25), borderRadius: BorderRadius.circular(6)),
-                    child: Text(c['status'] ?? '', style: const TextStyle(fontSize: 11, color: ShadColors.crimson, fontWeight: FontWeight.w600)),
-                  ),
-                  if (c['contract_type'] == 'additional') ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: ShadColors.gold.withAlpha(25), borderRadius: BorderRadius.circular(6)),
-                      child: Text(l10n.contractExtraService, style: const TextStyle(fontSize: 11, color: ShadColors.gold, fontWeight: FontWeight.w600)),
-                    ),
-                  ],
-                ]),
-                const SizedBox(height: 6),
-                if (c['start_date'] != null)
-                  Text(c['end_date'] != null
-                      ? l10n.contractDateRange(_formatDate(c['start_date']), _formatDate(c['end_date']))
-                      : l10n.contractDateFrom(_formatDate(c['start_date'])),
-                    style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
-                const SizedBox(height: 16),
-                if (clauses.isNotEmpty) ...[
-                  Text(l10n.contractClausesLabel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay')),
-                  const SizedBox(height: 8),
-                  ...clauses.map((cl) => Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: Colors.white.withAlpha(8), borderRadius: BorderRadius.circular(8), border: Border.all(color: ShadColors.cardBorder)),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Container(
-                        margin: const EdgeInsets.only(top: 2),
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(color: ShadColors.gold, shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(cl['content'] ?? '', style: const TextStyle(fontSize: 13, height: 1.5))),
-                    ]),
-                  )),
-                ],
-                if (docs.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Text(l10n.contractRequiredDocsLabel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay')),
-                  const SizedBox(height: 8),
-                  ...docs.map((d) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(children: [
-                      const Icon(Icons.description_outlined, size: 14, color: ShadColors.textSecondary),
-                      const SizedBox(width: 6),
-                      Text(d['name'] ?? '', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
-                    ]),
-                  )),
-                ],
-                if (hasPdf) ...[
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final url = _api.resolveFileUrl(c['pdf_url'] as String);
-                        final uri = Uri.tryParse(url);
-                        if (uri != null && await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        }
-                      },
-                      icon: const Icon(Icons.picture_as_pdf, size: 18),
-                      label: Text(l10n.contractDownloadPdf),
-                      style: ElevatedButton.styleFrom(backgroundColor: ShadColors.crimson, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                    ),
-                  ),
-                ],
-              ],
+        ),
+        if (_clientType == 'business')
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(l10n.contractValueExclVat, style: Lx.text(ctx, size: 11, color: Lx.faint)),
+          ),
+        if (c['start_date'] != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              c['end_date'] != null
+                  ? l10n.contractDateRange(_formatDate(c['start_date']), _formatDate(c['end_date']))
+                  : l10n.contractDateFrom(_formatDate(c['start_date'])),
+              style: Lx.text(ctx, size: 12.5, color: Lx.muted),
             ),
           ),
-        ]),
-      ),
-    );
+        LuxeLabeledSteps(labels: steps, current: _stepFor(status)),
+        if (clauses.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          LuxeKind(l10n.contractClausesLabel),
+          const SizedBox(height: 4),
+          for (var i = 0; i < clauses.length; i++)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              decoration: BoxDecoration(
+                  border: i == clauses.length - 1
+                      ? null
+                      : const Border(bottom: BorderSide(color: Lx.line))),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                SizedBox(
+                    width: 20,
+                    child: Text('${i + 1}',
+                        style: Lx.text(ctx, size: 11, color: Lx.faint, height: 1.8))),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Text('${clauses[i]['content'] ?? ''}',
+                        style: Lx.text(ctx, size: 13, height: 1.6))),
+              ]),
+            ),
+        ],
+        if (docs.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          LuxeKind(l10n.contractRequiredDocsLabel),
+          const SizedBox(height: 4),
+          for (var i = 0; i < docs.length; i++)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                  border: i == docs.length - 1
+                      ? null
+                      : const Border(bottom: BorderSide(color: Lx.line))),
+              child: Row(children: [
+                const LxIcon('doc', size: 18, color: Lx.muted),
+                const SizedBox(width: 10),
+                Expanded(child: Text('${docs[i]['name'] ?? ''}', style: Lx.text(ctx, size: 13.5))),
+              ]),
+            ),
+        ],
+        if (hasPdf) ...[
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: LuxeButton(
+              key: const ValueKey('contract-sheet-pdf'),
+              label: l10n.contractDownloadPdf,
+              lxIcon: 'down',
+              kind: LuxeButtonKind.primary,
+              size: LuxeButtonSize.lg,
+              onPressed: () => _openPdf(c),
+            ),
+          ),
+        ],
+      ]);
+    });
   }
 
   Future<void> _deleteContract(int id) async {
@@ -224,7 +266,11 @@ class _ContractsTabState extends State<ContractsTab> {
         content: Text(l10n.contractDeleteConfirmMsg),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error), child: Text(l10n.delete)),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Lx.crimson, foregroundColor: Colors.white),
+              child: Text(l10n.delete)),
         ],
       ),
     );
@@ -232,11 +278,14 @@ class _ContractsTabState extends State<ContractsTab> {
     try {
       await _contractProvider.deleteContract(id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractDeleted)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractDeleted)));
         _load();
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractDeleteFailed)));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.contractDeleteFailed)));
     }
   }
 
@@ -268,25 +317,40 @@ class _ContractsTabState extends State<ContractsTab> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text(AppLocalizations.of(ctx)!.companyApprove),
-          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(AppLocalizations.of(ctx)!.companyApproveTitle(contract['title'] ?? ''), style: ShadTypography.cardBody),
-            const SizedBox(height: 16),
-            Text(AppLocalizations.of(ctx)!.companyApproveUseSavedSignature, style: const TextStyle(color: ShadColors.textSecondary)),
-            const SizedBox(height: 8),
-            if (sig.startsWith('http') || sig.startsWith('/storage'))
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Image.network(
-                  sigUrl ?? (sig.startsWith('http') ? sig : '${_api.baseUrl.replaceAll('/api', '')}$sig'),
-                  height: 50, fit: BoxFit.contain,
-                ),
-              )
-            else
-              Text(sig, style: const TextStyle(fontSize: 24, fontFamily: 'DancingScript')),
-          ]),
+          content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(AppLocalizations.of(ctx)!.companyApproveTitle(contract['title'] ?? ''),
+                    style: Lx.text(ctx, size: 14)),
+                const SizedBox(height: 16),
+                Text(AppLocalizations.of(ctx)!.companyApproveUseSavedSignature,
+                    style: Lx.text(ctx, size: 13.5, color: Lx.muted)),
+                const SizedBox(height: 8),
+                if (sig.startsWith('http') || sig.startsWith('/storage'))
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LuxeSignatureInk(
+                      child: Image.network(
+                        sigUrl ??
+                            (sig.startsWith('http')
+                                ? sig
+                                : '${_api.baseUrl.replaceAll('/api', '')}$sig'),
+                        height: 50,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  )
+                else
+                  Text(sig, style: const TextStyle(fontSize: 24, fontFamily: 'DancingScript')),
+              ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.of(ctx)!.cancel)),
-            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text(AppLocalizations.of(ctx)!.confirm)),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(AppLocalizations.of(ctx)!.cancel)),
+            ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(AppLocalizations.of(ctx)!.confirm)),
           ],
         ),
       );
@@ -294,11 +358,14 @@ class _ContractsTabState extends State<ContractsTab> {
       try {
         await _contractProvider.companyApprove(contract['id'] as int);
         if (mounted) {
-          messenger.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractUpdated)));
+          messenger
+              .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractUpdated)));
           _load();
         }
       } catch (_) {
-        if (mounted) messenger.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
+        if (mounted)
+          messenger
+              .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
       }
       return;
     }
@@ -313,7 +380,8 @@ class _ContractsTabState extends State<ContractsTab> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(AppLocalizations.of(ctx)!.companyApproveTitle(contract['title'] ?? ''), style: ShadTypography.cardBody),
+            Text(AppLocalizations.of(ctx)!.companyApproveTitle(contract['title'] ?? ''),
+                style: Lx.text(ctx, size: 14)),
             const SizedBox(height: 16),
             TextField(
               controller: signatureController,
@@ -334,7 +402,8 @@ class _ContractsTabState extends State<ContractsTab> {
             onPressed: () {
               final sig = signatureController.text.trim();
               if (sig.isEmpty) {
-                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(AppLocalizations.of(ctx)!.enterSignature)));
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text(AppLocalizations.of(ctx)!.enterSignature)));
                 return;
               }
               Navigator.pop(ctx, sig);
@@ -348,11 +417,14 @@ class _ContractsTabState extends State<ContractsTab> {
     try {
       await _contractProvider.companyApprove(contract['id'] as int, signature: result);
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractUpdated)));
+        messenger
+            .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractUpdated)));
         _load();
       }
     } catch (_) {
-      if (mounted) messenger.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
+      if (mounted)
+        messenger
+            .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
     }
   }
 
@@ -376,7 +448,9 @@ class _ContractsTabState extends State<ContractsTab> {
     final Map<String, List<String>> actionsForStatus = {
       'draft': ['send'],
       'edit_requested': ['send'],
-      if (isSA) 'client_approved': ['company-approve'],
+      // The super admin always can; an account manager only when the super
+      // admin granted can_approve_contracts (STAFF_TEAMS_PLAN.md ف١).
+      if (_api.canCompanyApprove) 'client_approved': ['company-approve'],
       if (isSA) 'company_approved': [],
       if (!isSA) 'company_approved': ['archive'],
     };
@@ -384,170 +458,186 @@ class _ContractsTabState extends State<ContractsTab> {
     if (_loading) return const LoadingState(itemCount: 3);
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
-    return Stack(children: [
-      if (_contracts.isEmpty)
-        Center(child: EmptyState(icon: Icons.description_outlined, title: l10n.noContracts, subtitle: l10n.noContractsSubtitle))
-      else
-        RefreshIndicator(
-          onRefresh: _load,
-          child: ListView.builder(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 80),
-            itemCount: _contracts.length,
-            itemBuilder: (_, i) {
-              final c = _contracts[i];
+    final newBtn = (_api.role != 'super_admin' && canManage)
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: LuxeButton(
+                key: const ValueKey('contracts-new'),
+                label: _wsStatus == 'active' ? l10n.contractExtraService : l10n.contractCreateMain,
+                lxIcon: 'plus',
+                kind: LuxeButtonKind.primary,
+                size: LuxeButtonSize.lg,
+                onPressed: () {
+                  final isActive = _wsStatus == 'active';
+                  ContractBuilder.show(context,
+                      isAdditional: isActive,
+                      onCreated: _load,
+                      api: _api,
+                      contractProvider: _contractProvider,
+                      workspaceId: widget.workspaceId ?? _api.workspaceId);
+                },
+              ),
+            ),
+          )
+        : const SizedBox.shrink();
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: Lx.crimsonInk,
+      child: ListView(
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 16, 24),
+        children: [
+          newBtn,
+          if (_contracts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Column(children: [
+                Text(l10n.noContracts, style: Lx.display(context, size: 20)),
+                const SizedBox(height: 8),
+                Text(l10n.noContractsSubtitle,
+                    textAlign: TextAlign.center,
+                    style: Lx.text(context, size: 13.5, color: Lx.muted)),
+              ]),
+            )
+          else
+            ..._contracts.map((c) {
               final rawActions = actionsForStatus[c['status']] ?? [];
               final actions = rawActions.where((a) {
                 if (isSA) return a == 'company-approve' || a == 'complete';
-                if (!canManage) return false;
-                return a != 'company-approve';
+                if (a == 'company-approve') return _api.canCompanyApprove;
+                return canManage;
               }).toList();
               final editable = c['status'] == 'draft' || c['status'] == 'edit_requested';
-              return GestureDetector(
+              final status = c['status'] as String? ?? '';
+              final dot = (status == 'company_approved' || status == 'completed')
+                  ? LxStatus.ok
+                  : (status == 'rejected' || status == 'cancelled')
+                      ? LxStatus.bad
+                      : (status == 'sent' || status == 'client_approved')
+                          ? LxStatus.wait
+                          : LxStatus.off;
+              final amt = num.tryParse('${c['value'] ?? 0}');
+              final hasPdf = c['pdf_url'] != null && (c['pdf_url'] as String).isNotEmpty;
+              final inFlow = const {
+                'sent',
+                'client_approved',
+                'company_approved',
+                'completed',
+                'active'
+              }.contains(status);
+              final when = _shortDate(c['company_signed_at'] ?? c['updated_at'] ?? c['created_at']);
+              final sub = [statusLabels(l10n)[status] ?? status, when]
+                  .where((e) => e.isNotEmpty)
+                  .join(' · ');
+              final steps = [
+                l10n.contractStepSent,
+                l10n.contractStepClientApproved,
+                l10n.contractStepCompanyApproved,
+                l10n.contractStepActive
+              ];
+              final buttons = <Widget>[
+                for (final a in actions)
+                  LuxeButton(
+                    label: a == 'company-approve'
+                        ? l10n.companyApprove
+                        : a == 'send'
+                            ? l10n.send
+                            : a == 'archive'
+                                ? l10n.archive
+                                : a == 'complete'
+                                    ? l10n.completeComplete
+                                    : a,
+                    size: LuxeButtonSize.sm,
+                    kind: (a == 'company-approve' || a == 'send')
+                        ? LuxeButtonKind.primary
+                        : LuxeButtonKind.outline,
+                    onPressed: a == 'company-approve'
+                        ? () => _companyApproveWithSignature(c)
+                        : () => _action(c['id'], a, destructive: a == 'archive' || a == 'complete'),
+                  ),
+                if (editable && canManage && !isSA)
+                  LuxeButton(
+                    key: ValueKey('contract-delete-${c['id']}'),
+                    label: l10n.delete,
+                    size: LuxeButtonSize.sm,
+                    kind: LuxeButtonKind.danger,
+                    onPressed: () => _deleteContract(c['id']),
+                  ),
+                if (hasPdf)
+                  LuxeButton(
+                    key: ValueKey('contract-pdf-${c['id']}'),
+                    label: l10n.contractDownloadPdfShort,
+                    lxIcon: 'eye',
+                    size: LuxeButtonSize.sm,
+                    onPressed: () => _openPdf(c),
+                  ),
+              ];
+              // Mockup case 2: `.card` (`.ap` when it waits on the company),
+              // kind Main/Additional, title, "status · date", `.amt`, the
+              // four-step bar, then `.acts` (flex 1 each, gap 8).
+              return LuxeCard(
+                key: ValueKey('contract-card-${c['id']}'),
+                attention: status == 'client_approved',
                 onTap: () => editable ? _editContract(c) : _showContractDetail(c),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsetsDirectional.fromSTEB(13, 11, 13, 11),
-                  decoration: BoxDecoration(
-                    color: ShadColors.card,
-                    borderRadius: BorderRadius.circular(11),
-                    border: Border.all(color: ShadColors.cardBorder),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  LuxeKind(c['contract_type'] == 'additional'
+                      ? l10n.contractKindAdditional
+                      : l10n.contractKindMain),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 2),
+                    child: Text(c['title'] ?? '', style: Lx.text(context, size: 16)),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(c['title'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay')),
-                          const SizedBox(height: 4),
-                          Text(_formatDate(c['created_at'] ?? c['start_date']),
-                            style: TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
-                        ])),
-                        StatusBadge(status: c['status'] ?? ''),
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, size: 18),
-                          onSelected: (action) {
-                            if (action == 'edit') _editContract(c);
-                            if (action == 'view') _showContractDetail(c);
-                            if (action == 'delete') _deleteContract(c['id']);
-                            if (action == 'archive') _action(c['id'], 'archive', destructive: true);
-                          },
-                          itemBuilder: (_) {
-                            final l10n = AppLocalizations.of(context)!;
-                            final items = <PopupMenuEntry<String>>[];
-                            if (c['status'] == 'draft' || c['status'] == 'edit_requested') {
-                              items.add(PopupMenuItem(value: 'edit', child: ListTile(leading: const Icon(Icons.edit, size: 18), title: Text(l10n.edit), dense: true)));
-                              items.add(PopupMenuItem(value: 'delete', child: ListTile(leading: const Icon(Icons.delete, size: 18, color: ShadColors.error), title: Text(l10n.delete, style: const TextStyle(color: ShadColors.error)), dense: true)));
-                            } else {
-                              items.add(PopupMenuItem(value: 'view', child: ListTile(leading: const Icon(Icons.visibility, size: 18), title: Text(l10n.contractViewDetails), dense: true)));
-                            }
-                            if (c['status'] == 'company_approved') {
-                              items.add(PopupMenuItem(value: 'archive', child: ListTile(leading: const Icon(Icons.archive, size: 18), title: Text(l10n.archive), dense: true)));
-                            }
-                            return items;
-                          },
-                        ),
+                  if (sub.isNotEmpty)
+                    Text(sub, style: Lx.text(context, size: 12.5, color: Lx.muted)),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Text.rich(TextSpan(children: [
+                        TextSpan(
+                            text: amt != null ? lxFormatMoney(amt) : '${c['value'] ?? 0}',
+                            style: Lx.display(context, size: 20)),
+                        TextSpan(
+                            text: ' ${c['currency'] as String? ?? 'SAR'}',
+                            style: Lx.text(context, size: 11, color: Lx.muted)),
+                      ])),
+                    ),
+                  ),
+                  if (_clientType == 'business')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(l10n.contractValueExclVat,
+                          style: Lx.text(context, size: 10.5, color: Lx.faint)),
+                    ),
+                  if (inFlow)
+                    LuxeLabeledSteps(labels: steps, current: _stepFor(status))
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        LuxeStatusDot(status: dot),
+                        const SizedBox(width: 7),
+                        Text(statusLabels(l10n)[status] ?? status,
+                            style: Lx.text(context, size: 12, color: Lx.ink2)),
                       ]),
-                      const SizedBox(height: 6),
-                      Text('${c['value'] ?? 0} ${c['currency'] as String? ?? 'SAR'}',
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'PlayfairDisplay', color: ShadColors.gold)),
-                      if (_clientType == 'business')
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(l10n.contractValueExclVat, style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-                        ),
-                      if (actions.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.only(top: 8),
-                          decoration: const BoxDecoration(
-                            border: Border(top: BorderSide(color: ShadColors.cardBorder)),
-                          ),
-                          child: Row(children: actions.map((a) {
-                            final isDestructive = a == 'archive' || a == 'complete';
-                            final isGold = a == 'company-approve';
-                            final isCrimson = a == 'send';
-                            String label;
-                            Color bgColor;
-                            Color textColor;
-                            Color borderColor;
-                            if (isGold) {
-                              label = AppLocalizations.of(context)!.companyApprove;
-                              bgColor = ShadColors.goldSoft;
-                              textColor = ShadColors.gold;
-                              borderColor = ShadColors.goldBorder;
-                            } else if (isCrimson) {
-                              label = AppLocalizations.of(context)!.send;
-                              bgColor = ShadColors.crimson;
-                              textColor = Colors.white;
-                              borderColor = ShadColors.crimson;
-                            } else {
-                              label = isDestructive
-                                ? (a == 'archive' ? AppLocalizations.of(context)!.archive : AppLocalizations.of(context)!.completeComplete)
-                                : a;
-                              bgColor = Colors.white.withAlpha(10);
-                              textColor = ShadColors.textSecondary;
-                              borderColor = ShadColors.inputBorder;
-                            }
-                            return Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 2.5),
-                                child: GestureDetector(
-                                  onTap: isGold
-                                    ? () => _companyApproveWithSignature(c)
-                                    : () => _action(c['id'], a, destructive: isDestructive),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: bgColor,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: borderColor),
-                                    ),
-                                    child: Center(child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: textColor))),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList()),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+                    ),
+                  if (buttons.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: Row(children: [
+                        for (var i = 0; i < buttons.length; i++) ...[
+                          if (i > 0) const SizedBox(width: 8),
+                          Expanded(child: buttons[i]),
+                        ],
+                      ]),
+                    ),
+                ]),
               );
-            },
-          ),
-        ),
-      if (_api.role != 'super_admin' && canManage)
-        Positioned(
-          bottom: 16,
-          left: 16,
-          right: 16,
-          child: GestureDetector(
-            onTap: () {
-              final isActive = _wsStatus == 'active';
-              ContractBuilder.show(context, isAdditional: isActive, onCreated: _load, api: _api, contractProvider: _contractProvider);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: ShadColors.crimson,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.add, size: 18, color: Colors.white),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    _wsStatus == 'active' ? l10n.contractExtraService : l10n.contractCreateMain,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ]),
-            ),
-          ),
-        ),
-    ]);
+            }),
+        ],
+      ),
+    );
   }
 }

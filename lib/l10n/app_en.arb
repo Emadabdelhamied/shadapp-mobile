@@ -310,6 +310,8 @@
   "dashboard_cancel": "Cancel",
   "dashboard_changeLanguage": "Change Language",
   "dashboard_settings": "Settings",
+  "dashboardRoleOwner": "Account owner",
+  "dashboardRoleAssistant": "Assistant",
   "dashboard_more": "More",
   "dashboard_meetings": "Meetings",
   "dashboard_signature": "Signature",
@@ -375,16 +377,6 @@
   "settings_imageChangeFailed": "Failed to update profile picture",
   "settings_saved": "Settings saved successfully",
   "settings_saveFailed": "Failed to save settings",
-  "deleteAccount_button": "Delete account",
-  "deleteAccount_hint": "Permanently delete your account and the personal data linked to it.",
-  "deleteAccount_title": "Delete your account?",
-  "deleteAccount_body": "This permanently deletes your account and the personal data linked to it, and signs you out on every device. This can't be undone.\n\nContracts, signatures and payment records may be kept for as long as the law requires, then deleted.",
-  "deleteAccount_teamWarning": "Team members you added will lose access too.",
-  "deleteAccount_passwordLabel": "Enter your password to confirm",
-  "deleteAccount_confirm": "Delete permanently",
-  "deleteAccount_wrongPassword": "Incorrect password",
-  "deleteAccount_failed": "Couldn't delete your account. Please try again.",
-  "deleteAccount_done": "Your account has been deleted.",
   "signature_deleted": "Signature deleted",
   "signature_deleteFailed": "Failed to delete signature",
   "signature_saved": "Signature saved",
@@ -432,7 +424,6 @@
   "subusers_edit": "Edit",
   "subusers_phone": "Phone",
   "subusers_save": "Save",
-  "subusers_cancel": "Cancel",
   "subusers_setPassword": "Set new password",
   "subusers_newPasswordHint": "New password",
   "subusers_passwordChanged": "Password changed, and the user was signed out of all devices",
@@ -872,6 +863,35 @@
   "onboarding_welcome": "Welcome!",
   "onboarding_addSignature": "Add Your Signature",
   "onboarding_signNow": "Sign Now",
+  "onboardingNextStepsTitle": "What happens next",
+  "onboardingNotifyHint": "We’ll notify you — no need to keep the app open.",
+  "onboardingStepOf": "Step {current} of {total}",
+  "@onboardingStepOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardingAdditionalContract": "Additional contract",
+  "onboardingDownloadPdf": "Download PDF",
+  "onboardingPreviewShort": "Preview",
+  "onboardingDocUploaded": "Uploaded",
+  "onboardingDocMissing": "Missing",
+  "onboardingPaymentSent": "Payment sent",
+  "onboardingUnderReview": "Under review",
+  "onboardingClauseCount": "{count} clauses",
+  "@onboardingClauseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardingSigUpload": "Upload",
   "onboarding_contactSupport": "Contact Support",
   "onboarding_contractReceived": "Contract Received",
   "onboarding_reviewContract": "Review Contract",
@@ -1032,6 +1052,7 @@
   "payments_methodInstapay": "InstaPay",
   "payments_methodVodafoneCash": "Vodafone Cash",
   "payments_methodMobileWallet": "Mobile wallet",
+  "payments_methodCheque": "Cheque",
   "payments_remainingSummary": "of {total} {currency} — {remaining} remaining",
   "payments_taxSummary": "Value: {value} {currency} + tax {percentage}% = {amount} {currency}",
   "payments_dueDateFormat": "Due: {date}",
@@ -1122,6 +1143,11 @@
   "signatureRequiredSubUserMessage": "The primary account needs to save a signature first.",
   "signatureRequiredAction": "Sign Now",
   "editReasonHint": "Enter the reason for editing...",
+  "contractStepSent": "Sent",
+  "contractStepYouApproved": "You approved",
+  "contractStepCompanyApproved": "Company approved",
+  "contractStepActive": "Active",
+  "contractDownloadPdfShort": "PDF",
   "awaitingContracts": "Awaiting contracts...",
   "goToPayment": "Go to payment",
   "goToPaymentHint": "You can now proceed to payment",
@@ -1130,7 +1156,6 @@
   "completedStatus": "Contract completed",
   "editReasonTitle": "Edit reason",
   "deleteFileTitle": "Delete file",
-  "deleteFileConfirmation": "Delete \"{name}\"?",
   "@deleteFileConfirmation": {
     "placeholders": {
       "name": {}
@@ -1197,7 +1222,7 @@
   "amStatusPaid": "Paid",
   "amStatusPending": "Pending",
   "amTime": "Time",
-  "amViewAll": "View All",
+  "amViewAll": "View all",
   "amWorkspaceCreateFailed": "Failed to create workspace",
   "approvalActionFailed": "Action failed",
   "approvalApproved": "Approved",
@@ -1584,6 +1609,7 @@
   "paymentsMethodCorporateAccount": "Corporate Account",
   "paymentsMethodInstapay": "InstaPay",
   "paymentsMethodMobileWallet": "Mobile Wallet",
+  "paymentsMethodCheque": "Cheque",
   "paymentsMethodSwift": "SWIFT Transfer",
   "paymentsMethodVodafoneCash": "Vodafone Cash",
   "paymentsMultiCurrencyContractHint": "This client has contracts in multiple currencies — pick a contract to determine the payment currency",
@@ -1829,5 +1855,274 @@
   "signatureOpenFullscreen": "Open Signature Pad",
   "onboardingWaitingEditContract": "Contract Edit Under Review",
   "onboardingWaitingEditContractMsg": "Our team is reviewing your edit request. An updated contract will be sent to you soon.",
-  "signatureDrawSignature": "Draw Signature"
+  "signatureDrawSignature": "Draw Signature",
+  "workspaceTabTeam": "Team",
+  "staffRoleLabel": "Staff member",
+  "staffNavTitle": "Company staff",
+  "staffManageButton": "Staff",
+  "staffMyClientsTitle": "My clients",
+  "staffMyClientsEmpty": "No clients are assigned to you yet.",
+  "staffSearchHint": "Search clients",
+  "staffEmpty": "No staff members yet.",
+  "staffAdd": "Add staff member",
+  "staffEditAction": "Edit",
+  "staffFieldName": "Name",
+  "staffFieldEmail": "Email",
+  "staffFieldPhone": "Phone",
+  "staffFieldDob": "Date of birth",
+  "staffFieldPassword": "Password",
+  "staffSendEmail": "Email the login details",
+  "staffSaveAction": "Save",
+  "staffChangePassword": "Change password",
+  "staffArchiveAction": "Archive",
+  "staffUnarchiveAction": "Unarchive",
+  "staffArchiveConfirm": "Archive this staff member? They will be signed out and lose access immediately.",
+  "staffUnarchiveConfirm": "Restore this staff member? They will be able to log in again.",
+  "staffShowArchived": "Show archived",
+  "staffClientsLabel": "Clients",
+  "staffNoClients": "Not assigned to any client yet.",
+  "staffLoadFailed": "Could not load the staff list.",
+  "staffSaveFailed": "Could not save the changes.",
+  "staffCreatedMsg": "Staff member added.",
+  "staffUpdatedMsg": "Staff member updated.",
+  "staffArchivedMsg": "Staff member archived.",
+  "staffUnarchivedMsg": "Staff member restored.",
+  "staffPasswordChangedMsg": "Password changed. The staff member was signed out.",
+  "staffArchivedBadge": "Archived",
+  "teamTabHint": "Choose which company staff members work on this client. They can chat, send approval requests and join meetings for this client only.",
+  "teamTabEmpty": "There are no active staff members yet. The super admin adds them from the Staff screen.",
+  "teamTabAssign": "Assign",
+  "teamTabUnassign": "Remove",
+  "teamTabLoadFailed": "Could not load the team.",
+  "teamTabSaveFailed": "Could not update the team.",
+  "teamTabAssignedLabel": "Assigned",
+  "staffClientsLoadFailed": "Could not load your clients.",
+  "mtTitle": "Team",
+  "mtSubtitle": "Company staff who work on your clients.",
+  "mtAddFromCompany": "Add from company staff",
+  "mtHideCompany": "Hide company staff",
+  "mtCompanyStaffTitle": "Company staff",
+  "mtNotInAnyTeam": "Not in any team",
+  "mtInTeams": "In team: {names}",
+  "@mtInTeams": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "mtAddN": "Add {n} to my team",
+  "@mtAddN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "mtMyTeam": "My team",
+  "mtLinkClient": "Link to a client",
+  "mtRemoveFromTeam": "Remove from team",
+  "mtNoClientsLinked": "Not linked to any of your clients yet.",
+  "mtEdit": "Edit",
+  "mtUnlink": "Unlink",
+  "mtPickClient": "Client",
+  "mtPickClientHint": "Choose a client",
+  "mtPermOnClient": "What they can do on this client",
+  "mtPermChat": "Chat",
+  "mtPermApprovals": "Approvals",
+  "mtPermMeetings": "Meetings",
+  "mtSeeChat": "See chat",
+  "mtSendChat": "Send messages",
+  "mtSeeApprovals": "See approvals",
+  "mtRequestApprovals": "Request approvals",
+  "mtSeeMeetings": "See meetings",
+  "mtJoinMeetings": "Join meetings",
+  "mtDepNote": "Turning a \"see\" switch off also turns its action off.",
+  "mtSave": "Save",
+  "mtCancel": "Cancel",
+  "mtView": "view",
+  "mtSend": "send",
+  "mtRequest": "request",
+  "mtJoin": "join",
+  "mtNone": "No access",
+  "mtRemoveTitle": "Remove from your team?",
+  "mtRemoveBody": "They will be unassigned from {count} of your clients: {names}. Other managers' teams are not affected.",
+  "@mtRemoveBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "names": {}
+    }
+  },
+  "mtRemoveBodyNone": "They are not assigned to any of your clients.",
+  "mtRemoveConfirm": "Remove",
+  "mtLoadFailed": "Could not load the team.",
+  "mtSaveFailed": "Could not save the changes.",
+  "mtNoClientsToLink": "All your clients are already linked.",
+  "mtEmptyTeam": "Your team is empty. Add people from company staff.",
+  "mtNotMine": "Not in your team",
+  "mtNotMineHint": "Assigned before this client moved to you.",
+  "mtAddMine": "Add to my team",
+  "mtOpenTeamPage": "Open Team page",
+  "mtEditPerms": "Edit permissions",
+  "mtNoOtherStaff": "There are no other company staff to add.",
+  "teamTabHintManager": "Your team members. Assign or unassign here — permissions are set from the Team page.",
+  "teamTabEmptyManager": "Nobody in your team yet. Add people from the Team page.",
+  "chatStaffReadOnly": "You can read this chat but not write in it.",
+  "amRoleSuperAdmin": "Super admin",
+  "amRoleManager": "Account manager",
+  "amRoleAssistant": "Manager assistant",
+  "amGreetMorning": "Good morning",
+  "amGreetAfternoon": "Good afternoon",
+  "amGreetEvening": "Good evening",
+  "amHomeSubSa": "The agency today.",
+  "amHomeSubAm": "Here is what needs you today.",
+  "amKpiNeedAction": "need your action",
+  "amOpen": "Open",
+  "amWaitingOnYou": "Waiting on you",
+  "financeTitle": "Finance",
+  "financeApprovedTotal": "Approved total",
+  "financePendingCount": "Pending",
+  "financeApprovedCount": "Approved",
+  "financeAllCount": "All payments",
+  "financePaymentsHint": "{count} payments",
+  "financeSearchHint": "Search clients, contracts or amounts",
+  "financeLoadMore": "Load more",
+  "financeFailed": "Failed to load payments",
+  "@financePaymentsHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "amRoleStaff": "Team member",
+  "notificationsUnreadCount": "{count} unread",
+  "@notificationsUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsAllRead": "You’re all caught up",
+  "notificationsEmptyTitle": "Nothing new.",
+  "notificationsEmptyHint": "When something happens on one of your clients, it shows up here.",
+  "notificationsLoadFailed": "Couldn’t load your notifications.",
+  "notificationsDelete": "Delete",
+  "notificationsGroupToday": "Today",
+  "notificationsGroupYesterday": "Yesterday",
+  "notificationsGroupWeek": "Earlier this week",
+  "paymentsSummaryContracted": "Contracted",
+  "paymentsSummaryRemaining": "Remaining",
+  "reportsEyebrow": "Insight",
+  "amKpiRevenue": "Revenue",
+  "amKpiUnreadMessages": "Unread messages",
+  "amKpiAcrossManagers": "{count, plural, =1{1 manager} other{across {count} managers}}",
+  "@amKpiAcrossManagers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "amKpiAwaitingApproval": "{count} awaiting approval",
+  "@amKpiAwaitingApproval": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "amRecentActivity": "Recent activity",
+  "amStNeedsReview": "Needs your review",
+  "amStCompanyApproval": "Company approval",
+  "amStAwaitingClient": "Awaiting client",
+  "amPaymentProof": "Payment proof",
+  "amAgeMin": "{n} min",
+  "@amAgeMin": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "amAgeHour": "{n} h",
+  "@amAgeHour": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "amAgeToday": "Today",
+  "amClientsCount": "{count, plural, =1{1 client} other{{count} clients}}",
+  "@amClientsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "approvalsEyebrow": "Inbox",
+  "amNewClient": "New client",
+  "clientsEyebrowSa": "Directory",
+  "clientsEyebrowAm": "Your book",
+  "contractStepClientApproved": "Client approved",
+  "contractKindMain": "Main",
+  "contractKindAdditional": "Additional",
+  "teamEyebrow": "Team",
+  "amNewManager": "New manager",
+  "amCanApproveContracts": "Can approve contracts",
+  "amDeactivate": "Deactivate",
+  "amDeactivateConfirm": "Deactivate {name}? They will be signed out everywhere.",
+  "@amDeactivateConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "amAssignedClients": "{count, plural, =1{1 assigned client} other{{count} assigned clients}}",
+  "@amAssignedClients": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "staffNewMember": "New team member",
+  "staffPasswordShort": "Password",
+  "financeEyebrow": "Money",
+  "auditEyebrow": "Record",
+  "settingsEyebrow": "Account",
+  "settingsLead": "Your profile and language.",
+  "settingsLanguage": "Language",
+  "settingsSigUsedFor": "Used when you company-approve contracts.",
+  "clausesShowFewer": "Show fewer",
+  "clausesLead": "Fixed clauses go into every contract; optional ones are picked per contract.",
+  "settingsDisplayName": "Display name",
+  "clientsNewEyebrow": "Directory",
+  "credsTitle": "Client created",
+  "onboardingSentOn": "Sent {date}",
+  "@onboardingSentOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardingEditLabel": "What would you like changed?",
+  "onboardingEditHint": "e.g. Please split the payment into two instalments",
+  "onboardingSendRequest": "Send request",
+  "onboardingYourRequest": "Your request",
+  "onboardingSendPaymentTitle": "Send a payment",
+  "onboardingDropTitle": "Tap to add files",
+  "onboardingDropHint": "Images from your gallery",
+  "signatureLead": "Your e-signature, used when you approve contracts and requests.",
+  "signatureNone": "No signature saved yet",
+  "teamLead": "People who can work in this workspace — each with only the access you give them.",
+  "teamAdd": "Add teammate",
+  "teamAddTitle": "Add a teammate",
+  "teamSendLogin": "Email the login details",
+  "settingsClientLead": "Your profile and language."
 }
