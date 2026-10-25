@@ -9573,7 +9573,7 @@ abstract class AppLocalizations {
   /// No description provided for @paymentsRejectionReasonOptional.
   ///
   /// In en, this message translates to:
-  /// **'Rejection Reason (Optional)'**
+  /// **'Rejection reason (required, at least 5 characters)'**
   String get paymentsRejectionReasonOptional;
 
   /// No description provided for @paymentsRejectionReasonHint.
