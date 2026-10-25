@@ -9,6 +9,7 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../../../core/widgets/luxe/luxe_widgets.dart';
+import '../../../core/widgets/reject_reason_dialog.dart';
 import '../../../providers/contract_provider.dart';
 import '../../../providers/payment_provider.dart';
 
@@ -179,44 +180,13 @@ class _PaymentsTabState extends State<PaymentsTab> {
   }
 
   Future<void> _review(int id, [String action = 'approved']) async {
-    if (_api.role != 'super_admin') return;
+    if (!_api.canReviewPayments) return;
     final displayAction = action;
     final l10n = AppLocalizations.of(context)!;
     String? reason;
     if (action == 'rejected') {
-      final controller = TextEditingController();
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.paymentsRejectPayment),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l10n.paymentsRejectConfirmMsg),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: l10n.paymentsRejectionReasonOptional,
-                  hintText: l10n.paymentsRejectionReasonHint,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Lx.danger),
-              child: Text(l10n.reject),
-            ),
-          ],
-        ),
-      );
-      if (confirm != true) return;
-      reason = controller.text.trim();
+      reason = await showRejectReasonDialog(context);
+      if (reason == null) return;
     } else {
       final confirm = await showDialog<bool>(
         context: context,
@@ -356,7 +326,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
       );
 
   Widget _paymentCard(dynamic p, int i, AppLocalizations l10n) {
-    final isSA = _api.role == 'super_admin';
+    final canReview = _api.canReviewPayments;
     final isPending = p['status'] == 'pending';
     final isApproved = p['status'] == 'approved';
     final isScheduled = p['status'] == 'scheduled';
@@ -470,7 +440,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
           note('${l10n.paymentsRejectionReason}: ${p['rejection_reason']}', Lx.danger),
         if ((p['notes'] as String? ?? '').isNotEmpty)
           note('${l10n.paymentDetail_notes}: ${p['notes']}', Lx.line2),
-        if (isPending && isSA) ...[
+        if (isPending && canReview) ...[
           const SizedBox(height: 12),
           Row(children: [
             Expanded(

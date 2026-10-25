@@ -72,6 +72,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final isAdmin = role == 'account_manager' ||
         role == 'super_admin' ||
         role == 'manager_assistant' ||
+        role == 'accountant' ||
         isStaffMember;
     if (isAdmin && workspaceId != null && workspaceId.isNotEmpty) {
       // plans/notifications-badges-toasts-plan.md ن14 — this used to have
@@ -82,10 +83,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
       return '/am/workspace/$workspaceId?tab=${fcmTabIndex(type)}';
     }
     // Staff have no client detail screen — only the workspace above.
-    if (isAdmin && !isStaffMember && clientId != null && clientId.isNotEmpty) {
+    if (isAdmin &&
+        !isStaffMember &&
+        role != 'accountant' &&
+        clientId != null &&
+        clientId.isNotEmpty) {
       return '/am/clients/$clientId';
     }
     if (isStaffMember) return '/staff/dashboard';
+    if (role == 'accountant') return '/accountant/dashboard';
     if (isAdmin) return '/am/dashboard';
     return '/dashboard?tab=${fcmTabIndex(type, isClient: true)}';
   }
@@ -102,6 +108,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       case 'contract_company_approved':
       case 'contract_completed':
       case 'payment_reviewed':
+      case 'payment_reviewed_staff':
       case 'approval_responded':
         return 'ok';
       case 'contract_sent':
@@ -109,6 +116,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       case 'payment_created':
       case 'payment_scheduled':
       case 'payment_reminder':
+      case 'payment_overdue_staff':
       case 'payment_schedule_updated':
         return 'w';
       case 'approval_requested':
@@ -138,10 +146,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return 'check';
       case 'payment_created':
       case 'payment_reviewed':
+      case 'payment_reviewed_staff':
         return 'wallet';
       case 'payment_scheduled':
         return 'cal';
       case 'payment_reminder':
+      case 'payment_overdue_staff':
         return 'clock';
       case 'payment_schedule_deleted':
         return 'trash';

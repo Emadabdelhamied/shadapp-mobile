@@ -96,6 +96,13 @@ class ApiClient {
   // nothing else. The backend (restrict.roles) is the real gate.
   bool get isStaffMember => role == 'staff_member';
 
+  // Accountant (ACCOUNTANT_ROLE_PLAN.md): company-wide finance, may approve or
+  // reject payments, nothing else. The backend (restrict.roles) is the real gate.
+  bool get isAccountant => role == 'accountant';
+
+  /// Only the super admin and the accountant review payments (managers never).
+  bool get canReviewPayments => role == 'super_admin' || role == 'accountant';
+
   /// What this staff member may do on the workspace they have open
   /// (`my_staff_permissions` from `GET /workspaces/{id}`, PLAN_2 ق٣). Null =
   /// not loaded / not staff = nothing is hidden (the server still enforces).
@@ -112,6 +119,8 @@ class ApiClient {
     if (isStaffMember) {
       return key == 'can_view_clients' || key == 'can_chat';
     }
+    // The accountant is read-only apart from payment review.
+    if (isAccountant) return key == 'can_view_clients';
     if (isAssistant) {
       if (key == 'can_view_clients') return true;
       return assistantPermissions[key] == true;
@@ -426,8 +435,10 @@ class ApiClient {
   /// validated, since proof_files is nullable) and the payment moved to
   /// pending with no proof attached at all.
   Future<Map<String, dynamic>> multipartPut(String path, Map<String, dynamic> fields,
-      {List<File>? multipleFiles, String multipleFileField = 'files[]',
-       List<Uint8List>? multipleBytes, List<String>? multipleBytesNames}) async {
+      {List<File>? multipleFiles,
+      String multipleFileField = 'files[]',
+      List<Uint8List>? multipleBytes,
+      List<String>? multipleBytesNames}) async {
     final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'));
     request.headers.addAll(await _headers(multipart: true));
     request.fields['_method'] = 'PUT';
@@ -527,7 +538,9 @@ class ApiClient {
     if (response.statusCode == 422) {
       final errors = data['errors'] as Map<String, dynamic>?;
       final firstError = errors?.values.firstOrNull;
-      final msg = firstError is List ? firstError.first.toString() : (data['message'] ?? l10n?.invalidData ?? 'Invalid data');
+      final msg = firstError is List
+          ? firstError.first.toString()
+          : (data['message'] ?? l10n?.invalidData ?? 'Invalid data');
       // A handful of 422s carry a machine-readable `code` alongside the
       // human-readable `message` (e.g. 'signature_required' from
       // ContractController::clientAction/ChatController::respond — see
